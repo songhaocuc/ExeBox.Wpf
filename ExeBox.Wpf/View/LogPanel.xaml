@@ -1,0 +1,176 @@
+﻿<UserControl
+    x:Class="ExeBox.Wpf.View.LogPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ExeBox.Wpf"
+    xmlns:cmd="clr-namespace:ExeBox.Wpf.Command"
+    mc:Ignorable="d"
+    d:DesignHeight="450"
+    d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary
+                    Source="/Resources/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <!--日志数据模板-->
+            <DataTemplate
+                x:Key="log_item_data_template">
+                <StackPanel
+                    Margin="2"
+                    Orientation="Horizontal">
+                    <Image
+                        Width="16"
+                        Height="16"
+                        Margin="5,0"
+                        Style="{StaticResource log_item_image_style}" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Text="{Binding Content}" />
+                </StackPanel>
+            </DataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid
+        Background="{StaticResource visual_studio_background_brush_main}">
+        <Grid.RowDefinitions>
+            <RowDefinition
+                Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <DockPanel>
+
+            <ToggleButton
+                x:Name="autoScrollSwitch"
+                DockPanel.Dock="Right"
+                Height="20"
+                Width="20"
+                Margin="3"
+                Style="{StaticResource toggle_button_style}"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+                <Image
+                    Stretch="Fill"
+                    Source="{StaticResource down_arrow_image}" />
+                <ToggleButton.ToolTip>
+                    <StackPanel>
+                        <TextBlock
+                            FontWeight="Heavy">选中时自动滚动</TextBlock>
+                        <TextBlock>向上滚动鼠标滚轮或点击右键时自动取消。</TextBlock>
+                    </StackPanel>
+                </ToggleButton.ToolTip>
+            </ToggleButton>
+            
+            <Button
+                x:Name="saveButton"
+                DockPanel.Dock="Right"
+                Height="20"
+                Width="20"
+                Margin="3"
+                Style="{StaticResource click_button_style}"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+                <Image
+                    Stretch="Fill"
+                    Source="{StaticResource save_button_image}" />
+                <Button.ToolTip>
+                    <StackPanel>
+                        <TextBlock
+                            FontWeight="Heavy">保存当前日志</TextBlock>
+                        <TextBlock>选择目录进行保存，只记录点击按钮时的日志。</TextBlock>
+                    </StackPanel>
+                </Button.ToolTip>
+            </Button>
+
+            <Button
+                x:Name="clearAllButton"
+                DockPanel.Dock="Right"
+                Height="20"
+                Width="20"
+                Margin="3"
+                Style="{StaticResource click_button_style}"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+                <Image
+                    Stretch="Fill"
+                    Source="{StaticResource clear_all_button_image}" />
+                <Button.ToolTip>
+                    <StackPanel>
+                        <TextBlock
+                            FontWeight="Heavy">清除当前日志</TextBlock>
+                        <TextBlock>清除当前页的Error和Message日志。</TextBlock>
+                    </StackPanel>
+                </Button.ToolTip>
+            </Button>
+
+            <StackPanel
+                Orientation="Horizontal">
+                <ToggleButton
+                    x:Name="errorSwitch"
+                    Style="{StaticResource toggle_button_style}">
+                    <StackPanel
+                        Orientation="Horizontal">
+                        <Image
+                            Height="16"
+                            Width="16"
+                            Margin="0,0,5,0"
+                            Source="{StaticResource log_item_error_image}" />
+                        <TextBlock
+                            Text="{Binding ErrorCount}"
+                            Margin="0" />
+                        <TextBlock
+                            Text="Error"
+                            Margin="5,0" />
+                    </StackPanel>
+                </ToggleButton>
+                <Rectangle
+                    VerticalAlignment="Stretch"
+                    Width="1"
+                    Margin="3,4"
+                    Stroke="LightGray" />
+                <ToggleButton
+                    x:Name="messageSwitch"
+                    Style="{StaticResource toggle_button_style}">
+                    <StackPanel
+                        Orientation="Horizontal">
+                        <Image
+                            Height="16"
+                            Width="16"
+                            Margin="0,0,5,0"
+                            Source="{StaticResource log_item_message_image}" />
+                        <TextBlock
+                            Text="{Binding MessageCount}"
+                            Margin="0" />
+                        <TextBlock
+                            Text="Message"
+                            Margin="5,0" />
+                    </StackPanel>
+                </ToggleButton>
+                <Rectangle
+                    VerticalAlignment="Stretch"
+                    Width="1"
+                    Margin="3,4"
+                    Stroke="LightGray" />
+                <TextBox
+                    x:Name="textFilter"
+                    Margin="2"
+                    Width="150"
+                    Style="{StaticResource textbox_style}"></TextBox>
+            </StackPanel>
+        </DockPanel>
+
+
+        <ListBox
+            x:Name="logListBox"
+            Grid.Row="1"
+            SelectionMode="Extended"
+            ItemsSource="{Binding Logs}"
+            ItemTemplate="{StaticResource log_item_data_template}"
+            Style="{StaticResource log_list_style}"
+            ItemContainerStyle="{StaticResource log_item_container_style}">
+        </ListBox>
+    </Grid>
+</UserControl>

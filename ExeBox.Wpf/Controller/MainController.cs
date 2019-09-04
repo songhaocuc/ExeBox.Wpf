@@ -67,14 +67,19 @@ namespace ExeBox.Wpf.Controller
             #endregion
             InitCommandHandler();
 
-            manager.StartTasks();
+            manager.StartAllTasks();
             main.Closing += (sender, e) =>
             {
                 MessageBoxResult result = System.Windows.MessageBox.Show("关闭所有任务并退出？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.None);
                 if (result == MessageBoxResult.OK)
                 {
                     e.Cancel = false;
-                    manager.EndTasks();
+                    bool wait = true;
+                    manager.StopAllTasks(()=> { wait = false; });
+                    while (wait)
+                    {
+                        Thread.Sleep(10);
+                    }
                 }
                 if (result == MessageBoxResult.Cancel)
                 {
@@ -93,15 +98,50 @@ namespace ExeBox.Wpf.Controller
             var configs = new List<Model.LogTaskConfig>();
             foreach (var element in elements)
             {
+                string name = "undefined";
+                string dir = string.Empty;
+                string param = string.Empty;
+                int priority = 0;
+                try
+                {
+                    name = element.Attribute("cmd").Value;
+                    dir = element.Attribute("dir").Value;
+                    param = element.Attribute("param").Value;
+                    priority = int.Parse(element.Attribute("priority").Value);
+                }
+                catch
+                {
+
+                }
+                // param 不能为空
+                if(param == string.Empty)
+                {
+                    Model.LogTaskManager.LogError($"Empty [param] arrtibute, [name]:{name}");
+                    break;
+                }
                 var config = new Model.LogTaskConfig()
                 {
-                    Name = element.Attribute("cmd").Value,
-                    Dir = element.Attribute("dir").Value,
-                    Param = element.Attribute("param").Value,
+                    Name = name,
+                    Dir = dir,
+                    Param = param,
+                    Priority = priority,
                 };
                 configs.Add(config);
-                m_TaskSelections.Add(new View.TaskSelection() { Config = config, IsSelected = (element.Attribute("enabled").Value == "1") });
+
+                //enable没设置默认为没有选择
+                bool enabled = false;
+                try
+                {
+                    enabled = element.Attribute("enabled").Value == "1";
+                }
+                catch
+                {
+
+                }
+
+                m_TaskSelections.Add(new View.TaskSelection() { Config = config, IsSelected = enabled });
             }
+
 
             //选择启动进程 弹出选择界面
             //在启动界面如果选择关闭选择界面 则认为什么都不选并退出程序
@@ -165,17 +205,8 @@ namespace ExeBox.Wpf.Controller
 
         private void InitCommandHandler()
         {
-            CanExecuteRoutedEventHandler explorerCheck = (sender, e) =>
-            {
-                var treeItem = e.OriginalSource as TreeViewItem;
-                if (treeItem != null && treeItem.DataContext is Model.LogTask)
-                {
-                    e.CanExecute = true;
-                    e.Handled = true;
-                }
-            };
 
-            // 打开日志页
+            //1 打开日志页
             CommandBinding openCommandBinding = new CommandBinding();
             openCommandBinding.Command = Command.ExeboxCommands.OpenPage;
             openCommandBinding.CanExecute += (sender, e) =>
@@ -197,7 +228,7 @@ namespace ExeBox.Wpf.Controller
             };
             main.CommandBindings.Add(openCommandBinding);
 
-            // 关闭日志页
+            //2 关闭日志页
             CommandBinding closeCommandBinding = new CommandBinding();
             closeCommandBinding.Command = Command.ExeboxCommands.ClosePage;
             closeCommandBinding.CanExecute += (sender, e) =>
@@ -220,7 +251,7 @@ namespace ExeBox.Wpf.Controller
             };
             main.CommandBindings.Add(closeCommandBinding);
 
-            // 停止进程
+            //3 停止进程
             CommandBinding stopCommandBinding = new CommandBinding();
             stopCommandBinding.Command = Command.ExeboxCommands.StopTask;
             stopCommandBinding.CanExecute += (sender, e) =>
@@ -239,11 +270,34 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem == null) return;
 
                 var task = treeItem.DataContext as Model.LogTask;
-                task.End();
+                task.Stop();
             };
             main.CommandBindings.Add(stopCommandBinding);
 
-            // 重新启动进程
+            //4 强制结束进程
+            CommandBinding endCommandBinding = new CommandBinding();
+            endCommandBinding.Command = Command.ExeboxCommands.EndTask;
+            endCommandBinding.CanExecute += (sender, e) =>
+            {
+                var treeItem = e.OriginalSource as TreeViewItem;
+                if (treeItem != null && treeItem.DataContext is Model.LogTask)
+                {
+                    var task = treeItem.DataContext as Model.LogTask;
+                    e.CanExecute = (task.Status != Model.eLogTaskStatus.Terminated);
+                    e.Handled = true;
+                }
+            };
+            endCommandBinding.Executed += (sneder, e) =>
+            {
+                var treeItem = e.OriginalSource as TreeViewItem;
+                if (treeItem == null) return;
+
+                var task = treeItem.DataContext as Model.LogTask;
+                task.End();
+            };
+            main.CommandBindings.Add(endCommandBinding);
+
+            //5 重新启动进程
             CommandBinding restartCommandBinding = new CommandBinding();
             restartCommandBinding.Command = Command.ExeboxCommands.RestartTask;
             restartCommandBinding.CanExecute += (sender, e) =>
@@ -252,7 +306,10 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem != null && treeItem.DataContext is Model.LogTask)
                 {
                     var task = treeItem.DataContext as Model.LogTask;
-                    e.CanExecute = (task != null);
+                    if(task != null && task.Status != Model.eLogTaskStatus.Stopping)
+                    {
+                        e.CanExecute = true;
+                    }
                     e.Handled = true;
                 }
             };
@@ -262,12 +319,36 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem == null) return;
 
                 var task = treeItem.DataContext as Model.LogTask;
-                task.Restart();
+                task.Restart(false);
                 ShowDocument(task);
             };
             main.CommandBindings.Add(restartCommandBinding);
 
-            // 停止所有进程
+            //6 强制重新启动进程
+            CommandBinding forceRestartCommandBinding = new CommandBinding();
+            forceRestartCommandBinding.Command = Command.ExeboxCommands.ForceRestartTask;
+            forceRestartCommandBinding.CanExecute += (sender, e) =>
+            {
+                var treeItem = e.OriginalSource as TreeViewItem;
+                if (treeItem != null && treeItem.DataContext is Model.LogTask)
+                {
+                    var task = treeItem.DataContext as Model.LogTask;
+                    e.CanExecute = (task != null);
+                    e.Handled = true;
+                }
+            };
+            forceRestartCommandBinding.Executed += (sneder, e) =>
+            {
+                var treeItem = e.OriginalSource as TreeViewItem;
+                if (treeItem == null) return;
+
+                var task = treeItem.DataContext as Model.LogTask;
+                task.Restart(true);
+                ShowDocument(task);
+            };
+            main.CommandBindings.Add(forceRestartCommandBinding);
+
+            //7 停止所有进程
             CommandBinding stopAllCommandBinding = new CommandBinding();
             stopAllCommandBinding.Command = Command.ExeboxCommands.StopAllTasks;
             stopAllCommandBinding.CanExecute += (sender, e) =>
@@ -284,11 +365,32 @@ namespace ExeBox.Wpf.Controller
             };
             stopAllCommandBinding.Executed += (sneder, e) =>
             {
-                manager.EndTasks();
+                manager.StopAllTasks();
             };
             main.CommandBindings.Add(stopAllCommandBinding);
 
-            // 重启所有进程
+            //8 强制结束所有进程
+            CommandBinding endAllCommandBinding = new CommandBinding();
+            endAllCommandBinding.Command = Command.ExeboxCommands.EndAllTasks;
+            endAllCommandBinding.CanExecute += (sender, e) =>
+            {
+                foreach (var task in manager.Tasks)
+                {
+                    if (task.Status != Model.eLogTaskStatus.Terminated)
+                    {
+                        e.CanExecute = true;
+                        break;
+                    }
+                }
+                e.Handled = true;
+            };
+            endAllCommandBinding.Executed += (sneder, e) =>
+            {
+                manager.EndAllTasks();
+            };
+            main.CommandBindings.Add(endAllCommandBinding);
+
+            //9 重启所有进程
             CommandBinding restartAllCommandBinding = new CommandBinding();
             restartAllCommandBinding.Command = Command.ExeboxCommands.RestartAllTasks;
             restartAllCommandBinding.CanExecute += (sender, e) =>
@@ -298,7 +400,7 @@ namespace ExeBox.Wpf.Controller
             };
             restartAllCommandBinding.Executed += (sneder, e) =>
             {
-                manager.RestartTasks();
+                manager.RestartAllTasks();
                 foreach (var task in manager.Tasks)
                 {
                     ShowDocument(task);
@@ -306,7 +408,25 @@ namespace ExeBox.Wpf.Controller
             };
             main.CommandBindings.Add(restartAllCommandBinding);
 
-            // 重新选择任务
+            //10 强制重启所有进程
+            CommandBinding forceRestartAllCommandBinding = new CommandBinding();
+            forceRestartAllCommandBinding.Command = Command.ExeboxCommands.ForceRestartAllTasks;
+            forceRestartAllCommandBinding.CanExecute += (sender, e) =>
+            {
+                e.CanExecute = true;
+                e.Handled = true;
+            };
+            forceRestartAllCommandBinding.Executed += (sneder, e) =>
+            {
+                manager.ForceRestartAllTasks();
+                foreach (var task in manager.Tasks)
+                {
+                    ShowDocument(task);
+                }
+            };
+            main.CommandBindings.Add(forceRestartAllCommandBinding);
+
+            //11 重新选择任务
             CommandBinding modifySelectionsCommandBinding = new CommandBinding();
             modifySelectionsCommandBinding.Command = Command.ExeboxCommands.ModifySelections;
             modifySelectionsCommandBinding.CanExecute += (sender, e) =>
@@ -332,7 +452,7 @@ namespace ExeBox.Wpf.Controller
             };
             main.CommandBindings.Add(modifySelectionsCommandBinding);
 
-            // 帮助-关于
+            //12 帮助-关于
             CommandBinding helpAboutCommandBinding = new CommandBinding();
             helpAboutCommandBinding.Command = Command.ExeboxCommands.About;
             helpAboutCommandBinding.CanExecute += (sender, e) =>

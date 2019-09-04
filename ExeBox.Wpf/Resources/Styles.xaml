@@ -280,6 +280,50 @@
                 </Setter>
 
             </Style>
+            <Style
+                x:Key="select_item_container_style"
+                TargetType="ListBoxItem">
+                <Setter
+                    Property="BorderThickness"
+                    Value="0" />
+                <Setter
+                    Property="HorizontalContentAlignment"
+                    Value="Stretch" />
+                <Setter
+                    Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate
+                            TargetType="{x:Type ListBoxItem}">
+                            <Border
+                                x:Name="Bd"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="true">
+                                <ContentPresenter
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+
+            </Style>
+            <Style
+                x:Key="select_checkbox_style"
+                TargetType="CheckBox">
+                <Style.Triggers>
+                    <Trigger
+                        Property="IsChecked"
+                        Value="False">
+                        <Setter
+                            Property="TextElement.Foreground"
+                            Value="Gray" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <!--listBox样式-->
             <Style
                 x:Key="log_list_style"
@@ -689,9 +733,17 @@
                                 Icon="{StaticResource menu_item_image_stop }"
                                 Command="{x:Static cmd:ExeboxCommands.StopAllTasks}" />
                             <MenuItem
+                                Header="强制结束所有任务"
+                                Icon="{StaticResource menu_item_image_stop }"
+                                Command="{x:Static cmd:ExeboxCommands.EndAllTasks}" />
+                            <MenuItem
                                 Header="重启所有任务"
                                 Icon="{StaticResource menu_item_image_restart }"
                                 Command="{x:Static cmd:ExeboxCommands.RestartAllTasks}" />
+                            <MenuItem
+                                Header="强制重启所有任务"
+                                Icon="{StaticResource menu_item_image_restart }"
+                                Command="{x:Static cmd:ExeboxCommands.ForceRestartAllTasks}" />
                         </ContextMenu>
                     </Setter.Value>
                 </Setter>
@@ -865,9 +917,17 @@
                                 Icon="{StaticResource menu_item_image_stop }"
                                 Command="{x:Static cmd:ExeboxCommands.StopTask}" />
                             <MenuItem
+                                Header="强制结束任务"
+                                Icon="{StaticResource menu_item_image_stop }"
+                                Command="{x:Static cmd:ExeboxCommands.EndTask}" />
+                            <MenuItem
                                 Header="重启任务"
                                 Icon="{StaticResource menu_item_image_restart }"
                                 Command="{x:Static cmd:ExeboxCommands.RestartTask}" />
+                            <MenuItem
+                                Header="强制重启任务"
+                                Icon="{StaticResource menu_item_image_restart }"
+                                Command="{x:Static cmd:ExeboxCommands.ForceRestartTask}" />
                         </ContextMenu>
                     </Setter.Value>
                 </Setter>
@@ -1052,7 +1112,7 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
-            
+
             <!--任务状态图标样式-->
             <Style
                 x:Key="log_task_status_image_style"
@@ -1070,10 +1130,10 @@
                     </DataTrigger>
                     <DataTrigger
                         Binding="{Binding Status}"
-                        Value="Initialized">
+                        Value="Stopping">
                         <Setter
                             Property="Source"
-                            Value="{StaticResource task_status_image_initialize}" />
+                            Value="{StaticResource task_status_image_stopping}" />
                     </DataTrigger>
                     <DataTrigger
                         Binding="{Binding Status}"

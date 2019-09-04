@@ -63,13 +63,14 @@
     <Compile Include="Command\Commands.cs" />
     <Compile Include="Controller\LogPanelController.cs" />
     <Compile Include="Controller\MainController.cs" />
-    <Compile Include="Extensions.cs" />
+    <Compile Include="Utils\Extensions.cs" />
     <Compile Include="View\LogPanel.xaml.cs">
       <DependentUpon>LogPanel.xaml</DependentUpon>
     </Compile>
     <Compile Include="View\TaskPickDialog.xaml.cs">
       <DependentUpon>TaskPickDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Utils\Win32Dll.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -139,13 +140,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="exebox.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\Icon\exebox.ico" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\Icon\exebox_32.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="exebox.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -36,7 +36,10 @@ namespace ExeBox.Wpf
         {
             foreach (var document in pane.Children)
             {
-                document.IsActive = (document == doc);
+                lock (document)
+                {
+                    document.IsActive = (document == doc);
+                }
             }
         }
     }

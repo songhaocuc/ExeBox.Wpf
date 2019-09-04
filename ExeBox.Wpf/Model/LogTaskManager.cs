@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,6 +65,9 @@ namespace ExeBox.Wpf.Model
         public ObservableCollection<LogTask> Tasks { get; set; }
         public List<LogTaskConfig> Configs { get; private set; }
 
+        //在stop所有任务时，由于是异步的，所以用事件来提示所有任务结束
+        private event AllTasksStoppedEventHandler AllTasksStopped;
+
         /// <summary>
         /// 根据所给配置初始化日志任务
         /// </summary>
@@ -74,42 +78,87 @@ namespace ExeBox.Wpf.Model
             Configs = configs;
             foreach (var config in Configs)
             {
-                InitTask(config);
+                var task = new LogTask(config);
+                Tasks.Add(task);
             }
             LogTaskManager.LogMessage("初始化完成");
         }
 
-        public void StartTasks()
+        /// <summary>
+        /// 启动所有任务（同步）
+        /// </summary>
+        public void StartAllTasks()
         {
-            foreach (var task in Tasks)
+            // 按优先级升序启动
+            ActionByPriority(true, (t)=> { t.Start(); });
+        }
+
+        /// <summary>
+        /// 结束所有任务（同步）
+        /// </summary>
+        public void EndAllTasks()
+        {
+            // 按照优先级降序结束
+            ActionByPriority(false, (t) => { t.End(); });
+        }
+
+
+        /// <summary>
+        /// 停止所有任务（异步）
+        /// </summary>
+        /// <param name="callback"></param>
+        public void StopAllTasks(AllTasksStoppedEventHandler callback = null)
+        {
+            AllTasksStopped += callback;
+            // 按照优先级降序结束
+            var tasks = PriorityTaskQueue(false);
+            DoStopTasks(tasks);
+        }
+
+        //递归结束剩余的任务
+        private void DoStopTasks(Queue<LogTask> remainTasks)
+        {
+            if(remainTasks.Count > 0)
             {
-                task.Start();
+                var task = remainTasks.Dequeue();
+                if(task.Status == eLogTaskStatus.Running)
+                {
+                    task.Stop(() =>
+                    {
+                        DoStopTasks(remainTasks);
+                    });
+                }
+                else
+                {
+                    DoStopTasks(remainTasks);
+                }
+                
+            }
+            else
+            {
+                AllTasksStopped?.Invoke();
+                AllTasksStopped = null;
             }
         }
 
-        public void EndTasks()
+        /// <summary>
+        /// 重启所有任务(异步)
+        /// </summary>
+        public void RestartAllTasks(Action callback = null)
         {
-            foreach (var task in Tasks)
-            {
-                task.End();
-            }
+            StopAllTasks(()=> {
+                StartAllTasks();
+                callback?.Invoke();
+            });
         }
 
-        public void RestartTasks()
+        /// <summary>
+        /// 强制重启所有任务（同步）
+        /// </summary>
+        public void ForceRestartAllTasks()
         {
-            foreach (var task in Tasks)
-            {
-                task.Restart();
-            }
-        }
-
-        private void InitTask(LogTaskConfig config)
-        {
-            if (!Configs.Contains(config))
-                Configs.Add(config);
-            var task = new LogTask(config);
-            task.Init();
-            Tasks.Add(task);
+            EndAllTasks();
+            StartAllTasks();
         }
 
         /// <summary>
@@ -121,12 +170,10 @@ namespace ExeBox.Wpf.Model
             if (!Configs.Contains(config))
                 Configs.Add(config);
             var addedTask = new LogTask(config);
-            addedTask.Init();
             addedTask.Start();
             Tasks.Add(addedTask);
             return addedTask;
         }
-
         /// <summary>
         /// 移除日志任务
         /// </summary>
@@ -138,7 +185,7 @@ namespace ExeBox.Wpf.Model
             Model.LogTask removedTask = null;
             foreach (var item in Tasks)
             {
-                if(item.Config == config)
+                if (item.Config == config)
                 {
                     removedTask = item;
                 }
@@ -146,6 +193,48 @@ namespace ExeBox.Wpf.Model
             Tasks.Remove(removedTask);
             removedTask.End();
             return removedTask;
+        }
+
+
+        /// <summary>
+        /// 按照优先级对任务进行操作
+        /// </summary>
+        /// <param name="up">是否升序（升序：优先级低的先执行）</param>
+        /// <param name="action">操作内容</param>
+        private void ActionByPriority(bool up, Action<LogTask> action)
+        {
+            var tasks = new List<LogTask>(this.Tasks);
+            tasks.Sort((LogTask t1, LogTask t2) =>
+            {
+                var p1 = t1.Config.Priority;
+                var p2 = t2.Config.Priority;
+                // up 按照升序
+                var result = up ? p1 - p2 : p2 - p1;
+                return result;
+            });
+
+            foreach (var task in tasks)
+            {
+                action(task);
+            }
+        }
+        /// <summary>
+        /// 获取按优先级排列的任务队列，up为true时 优先级低的在队前
+        /// </summary>
+        /// <param name="up"></param>
+        /// <returns></returns>
+        private Queue<LogTask> PriorityTaskQueue(bool up)
+        {
+            var tasks = new List<LogTask>(this.Tasks);
+            tasks.Sort((LogTask t1, LogTask t2) =>
+            {
+                var p1 = t1.Config.Priority;
+                var p2 = t2.Config.Priority;
+                // up 按照升序
+                var result = up ? p1 - p2 : p2 - p1;
+                return result;
+            });
+            return new Queue<LogTask>(tasks);
         }
 
 
@@ -172,5 +261,28 @@ namespace ExeBox.Wpf.Model
             Instance.PrintMainLog(eLogType.Error, content);
             Instance.ErrorCount++;
         }
+        public static void ClearRemainTasks(List<LogTaskConfig> configs)
+        {
+            foreach (var config in configs)
+            {
+                try
+                {
+                    //精确进程名  用GetProcessesByName
+                    foreach (Process p in Process.GetProcessesByName(config.ExecFile))
+                    {
+                        if (!p.CloseMainWindow())
+                        {
+                            p.Kill();
+                        }
+                    }
+                }
+                catch
+                {
+
+                }
+            }
+        }
     }
+
+    public delegate void AllTasksStoppedEventHandler();
 }

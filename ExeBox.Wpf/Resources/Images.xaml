@@ -327,6 +327,102 @@
                 </DrawingImage.Drawing>
             </DrawingImage>
             <DrawingImage
+                x:Key="task_status_image_stopping">
+                <DrawingImage.Drawing>
+                    <DrawingGroup
+                        ClipGeometry="M0,0 V1024 H1024 V0 H0 Z">
+                        <DrawingGroup.Transform>
+                            <TranslateTransform
+                                X="1"
+                                Y="1" />
+                        </DrawingGroup.Transform>
+                        <DrawingGroup
+                            Opacity="1">
+                            <GeometryDrawing>
+                                <GeometryDrawing.Brush>
+                                    <SolidColorBrush
+                                        Color="#FFFFFFFF"
+                                        Opacity="0" />
+                                </GeometryDrawing.Brush>
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="0"
+                                        RadiusY="0"
+                                        Rect="-1,-1,1026,1026" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                        </DrawingGroup>
+                        <DrawingGroup
+                            Opacity="1">
+                            <GeometryDrawing
+                                Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="100"
+                                        RadiusY="100"
+                                        Rect="58,58,908,908" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing
+                                Brush="Orange">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="85"
+                                        RadiusY="85"
+                                        Rect="128,128,768,768" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing
+                                Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="20"
+                                        RadiusY="20"
+                                        Rect="384,341,64,342" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing
+                                Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="20"
+                                        RadiusY="20"
+                                        Rect="576,341,64,342" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                        </DrawingGroup>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+            <DrawingImage
+                x:Key="task_status_image_running____">
+                <DrawingImage.Drawing>
+                    <DrawingGroup
+                        ClipGeometry="M0,0 V1024 H1024 V0 H0 Z">
+                        <DrawingGroup.Transform>
+                            <TranslateTransform
+                                X="1"
+                                Y="1" />
+                        </DrawingGroup.Transform>
+                        <DrawingGroup
+                            Opacity="1">
+                            <GeometryDrawing
+                                Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry
+                                        RadiusX="100"
+                                        RadiusY="100"
+                                        Rect="58,58,908,908" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing
+                                Brush="DarkOrange"
+                                Geometry="F1 M1024,1024z M0,0z M810.66667,128L213.33333,128A85.33333,85.33333,0,0,0,128,213.33333L128,810.66667A85.33333,85.33333,0,0,0,213.33333,896L810.66667,896A85.33333,85.33333,0,0,0,896,810.66667L896,213.33333A85.33333,85.33333,0,0,0,810.66667,128z M676.26667,400.21333L400.21333,676.26667A20.48,20.48,0,0,1,370.34667,676.26667L347.73333,653.65333A20.48,20.48,0,0,1,347.73333,623.78667L623.78667,347.73333A20.48,20.48,0,0,1,653.65333,347.73333L676.26667,370.34667A20.48,20.48,0,0,1,676.26667,400.21333z" />
+                        </DrawingGroup>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+            <DrawingImage
                 x:Key="task_status_image_terminated">
                 <DrawingImage.Drawing>
                     <DrawingGroup

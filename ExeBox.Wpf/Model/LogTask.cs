@@ -20,8 +20,11 @@ namespace ExeBox.Wpf.Model
     /// </summary>
     class LogTask : INotifyPropertyChanged
     {
+        const string EVENT_PREFIX = @"Global\XXSY2SERVER";
+
         public LogTaskConfig Config { get; set; }
         public ObservableCollection<Log> Logs { get; set; }
+
         private int m_MessageCount;
         private int m_ErrorCount;
         private eLogTaskStatus m_Status;
@@ -52,7 +55,7 @@ namespace ExeBox.Wpf.Model
         public eLogTaskStatus Status
         {
             get { return m_Status; }
-            set
+            private set
             {
                 m_Status = value;
                 if (PropertyChanged != null)
@@ -62,10 +65,12 @@ namespace ExeBox.Wpf.Model
             }
         }
 
+        //该线程用于监测任务进程是否结束
         private Thread m_StatusObserver;
 
-        private delegate void PreviousProcessExitedEventHandler();
-        private event PreviousProcessExitedEventHandler m_PreviousProcessExited;
+        //该事件表示任务进程结束,用于在任务重启时使用
+        public event PreviousTaskStoppedEventHandler PreviousProcessExited;
+
 
         //执行进程
         private Process m_ExecProcess;
@@ -84,17 +89,18 @@ namespace ExeBox.Wpf.Model
 
         }
 
-        /// <summary>
-        /// 初始化任务
-        /// </summary>
-        public void Init()
+
+        //初始化任务
+        private void Init()
         {
             if (Config == null) return;
             //初始化执行进程
             m_ExecProcess = new Process();
+
             ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.WorkingDirectory = Config.Dir;
             startInfo.FileName = Path.Combine(Config.Dir, Config.ExecFile);
-            //startInfo.FileName = Config.ExecFile; //exe文件路径
+            //startInfo.FileName = Config.ExecFile;
             startInfo.Arguments = Config.Arguments;
             startInfo.UseShellExecute = false;   // 是否使用外壳程序 
             startInfo.CreateNoWindow = true;   //是否在新窗口中启动该进程的值 
@@ -124,30 +130,26 @@ namespace ExeBox.Wpf.Model
                 }
             });
 
-
-            m_ExecProcess.Exited += (sender, e) =>
-            {
-                Status = eLogTaskStatus.Terminated;
-            };
-
-
+            //进程的监控线程
             m_StatusObserver = new Thread(() =>
             {
                 m_ExecProcess.WaitForExit();
                 Status = eLogTaskStatus.Terminated;
                 //m_StatusObserver.Abort();
-                m_PreviousProcessExited?.Invoke();
-                m_PreviousProcessExited = null;
+                PreviousProcessExited?.Invoke();
+                PreviousProcessExited = null;
             });
-
         }
 
         /// <summary>
-        /// 开始任务
+        /// 开始任务（同步）
         /// </summary>
         public void Start()
         {
-            
+
+            if (this.Status != eLogTaskStatus.Terminated) return;
+            Clear();
+            Init();
             m_ExecProcess.Start();
             // Asynchronously read the standard output of the spawned process. 
             // This raises OutputDataReceived events for each line of output.
@@ -157,49 +159,82 @@ namespace ExeBox.Wpf.Model
             // 检测进程是否关闭
             m_StatusObserver.Start();
             Status = eLogTaskStatus.Running;
+        }
 
+
+        /// <summary>
+        /// 停止任务（异步）
+        /// 触发服务器创建的事件 "Global\XXSY2SERVER[进程id]"
+        /// </summary>
+        public void Stop(PreviousTaskStoppedEventHandler callback = null)
+        {
+            if (this.Status != eLogTaskStatus.Running) return;
+
+            string eventName = string.Format($"{EVENT_PREFIX}{m_ExecProcess.Id}");
+            var h = Win32Dll.OpenEvent((UInt32)(0x000F0000L | 0x00100000L | 0x3), false, eventName);
+            if (h == IntPtr.Zero)
+                LogTaskManager.LogError(string.Format("Fail OpenEvent, {0}", eventName));
+            this.Status = eLogTaskStatus.Stopping;
+            this.PreviousProcessExited += callback;
+            Win32Dll.SetEvent(h);
         }
 
         /// <summary>
-        /// 结束任务
+        /// 结束任务（同步）
         /// </summary>
         public void End()
         {
-            if (m_ExecProcess!=null &&!m_ExecProcess.HasExited)
+            if (m_ExecProcess != null && !m_ExecProcess.HasExited)
             {
                 m_ExecProcess.Kill();
-                //m_ExecProcess.CloseMainWindow();
-                //m_ExecProcess.Close();
             }
-                
             m_ExecProcess = null;
-            Status = eLogTaskStatus.Terminated;
-
+            //Status = eLogTaskStatus.Terminated;
+            int i = 10;
+            while(this.Status!= eLogTaskStatus.Terminated && i-- > 0)
+            {
+                Thread.Sleep(10);
+                if (i == 0) LogTaskManager.LogError(string.Format("Task {0} End Timeout", this.Config.Name));
+            }
         }
 
         /// <summary>
         /// 重新启动
         /// </summary>
-        public void Restart()
+        /// <param name="isForced">是否强制关闭</param>
+        public void Restart(bool isForced, Action callback = null)
         {
-            if (m_ExecProcess != null && !m_ExecProcess.HasExited) {
-                m_PreviousProcessExited += () =>
-                {
-                    Clear();
-                    Init();
-                    Start();
-                };
-                End();
-            }
-            else
+            //if (this.Status == eLogTaskStatus.Stopping) return;
+
+
+            //if (m_ExecProcess != null && !m_ExecProcess.HasExited)
+            if (this.Status == eLogTaskStatus.Running)
             {
-                Clear();
-                Init();
+                // 关闭后重新启动
+                // 关闭后重新启动
+                PreviousProcessExited += () =>
+                {
+                    Start();
+                    callback?.Invoke();
+                };
+                if (isForced)
+                {
+                    End();
+                }
+                else
+                {
+                    Stop();
+                }
+            }
+            else if (this.Status == eLogTaskStatus.Terminated)
+            {
+                // 没有在运行 直接重启
                 Start();
+                callback?.Invoke();
             }
         }
 
-        // 打印日志，实质上是将日志添加到被绑定的Logs中
+        // 打印日志，实质上是将日志添加到被界面绑定的Logs中
         private void PrintLog(eLogType type, string massage)
         {
             Log log = new Log() { Type = type, Content = massage };
@@ -213,6 +248,7 @@ namespace ExeBox.Wpf.Model
             ErrorCount = 0;
             MessageCount = 0;
             m_ExecProcess = null;
+            PreviousProcessExited = null;
         }
     }
 
@@ -255,17 +291,28 @@ namespace ExeBox.Wpf.Model
         /// 可执行文件
         /// </summary>
         public string ExecFile { get; private set; }
+
         /// <summary>
         /// 执行参数
         /// </summary>
         public string Arguments { get; private set; }
+
+        /// <summary>
+        /// 优先级 优先级高的进程后启动、先结束（依赖于其他进程）
+        /// </summary>
+        public int Priority { get; set; }
     }
 
+    /// <summary>
+    /// 任务状态 Running Stopping Terminated三种状态
+    /// </summary> 
     enum eLogTaskStatus
     {
-        None,
-        Initialized,
-        Running,
-        Terminated
+        Terminated,         //已停止（未运行）
+        Running,            //运行
+        Stopping,           //正在停止
     }
+
+
+    public delegate void PreviousTaskStoppedEventHandler();
 }

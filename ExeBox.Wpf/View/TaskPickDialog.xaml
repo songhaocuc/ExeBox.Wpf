@@ -9,7 +9,7 @@
     Icon="/Resources/Icon/exebox_32.ico"
     Title="TaskPickDialog"
     Height="300"
-    Width="550">
+    Width="650">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -18,19 +18,54 @@
             </ResourceDictionary.MergedDictionaries>
             <DataTemplate
                 x:Key="task_item_data_template">
-                <CheckBox
-                    IsChecked="{Binding IsSelected}">
-                    <StackPanel
-                        Orientation="Horizontal">
-                        <TextBlock
-                            Text="{Binding Config.Name}"
-                            FontWeight="Bold" />
-                        <TextBlock
-                            Text="{Binding Config.Param}"
-                            Margin="10,0,0,0" />
-                    </StackPanel>
-
-                </CheckBox>
+                <Grid>
+                    <CheckBox
+                        Style="{StaticResource select_checkbox_style}"
+                        HorizontalContentAlignment="Stretch"
+                        IsChecked="{Binding IsSelected}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition
+                                    Width="Auto" MinWidth="120"/>
+                                <ColumnDefinition
+                                    Width="*" />
+                                <ColumnDefinition
+                                    Width="Auto" />
+                                <ColumnDefinition
+                                    Width="20" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Text="{Binding Config.Name}"
+                                FontWeight="Bold" />
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="{Binding Config.Param}"
+                                Margin="10,0,0,0" />
+                            <TextBlock
+                                Grid.Column="2"
+                                Text="优先级"
+                                FontWeight="Bold"
+                                Margin="5,0,0,0">
+                                <TextBlock.ToolTip>
+                                    <StackPanel
+                                        Orientation="Vertical">
+                                        <TextBlock
+                                            Text="优先级"
+                                            FontWeight="Bold" />
+                                        <TextBlock
+                                            Text="优先级高的任务后启动，先关闭。" />
+                                    </StackPanel>
+                                </TextBlock.ToolTip>
+                            </TextBlock>
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="{Binding Config.Priority}"
+                                Margin="5,0,0,0" />
+                        </Grid>
+                    </CheckBox>
+                </Grid>
+                
 
             </DataTemplate>
         </ResourceDictionary>
@@ -46,7 +81,8 @@
         <ListBox
             x:Name="selectionList"
             ItemTemplate="{StaticResource task_item_data_template}"
-            Style="{StaticResource log_list_style}">
+            Style="{StaticResource log_list_style}"
+            ItemContainerStyle="{StaticResource select_item_container_style}">
 
         </ListBox>
         <Grid

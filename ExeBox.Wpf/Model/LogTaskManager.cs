@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ExeBox.Wpf.Model
@@ -59,6 +61,19 @@ namespace ExeBox.Wpf.Model
                 }
             }
         }
+        //状态栏消息
+        private string m_Tip;
+        public string Tip
+        {
+            get { return m_Tip; }
+            set { m_Tip = value;
+                if (PropertyChanged != null)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs("Tip"));
+                }
+            }
+        }
+
         /// <summary>
         /// LogTaskManager管理的所有LogTask
         /// </summary>
@@ -90,7 +105,7 @@ namespace ExeBox.Wpf.Model
         public void StartAllTasks()
         {
             // 按优先级升序启动
-            ActionByPriority(true, (t)=> { t.Start(); });
+            ActionByPriority(true, (t) => { t.Start(); });
         }
 
         /// <summary>
@@ -118,10 +133,10 @@ namespace ExeBox.Wpf.Model
         //递归结束剩余的任务
         private void DoStopTasks(Queue<LogTask> remainTasks)
         {
-            if(remainTasks.Count > 0)
+            if (remainTasks.Count > 0)
             {
                 var task = remainTasks.Dequeue();
-                if(task.Status == eLogTaskStatus.Running)
+                if (task.Status == eLogTaskStatus.Running)
                 {
                     task.Stop(() =>
                     {
@@ -132,7 +147,7 @@ namespace ExeBox.Wpf.Model
                 {
                     DoStopTasks(remainTasks);
                 }
-                
+
             }
             else
             {
@@ -146,7 +161,8 @@ namespace ExeBox.Wpf.Model
         /// </summary>
         public void RestartAllTasks(Action callback = null)
         {
-            StopAllTasks(()=> {
+            StopAllTasks(() =>
+            {
                 StartAllTasks();
                 callback?.Invoke();
             });
@@ -261,25 +277,49 @@ namespace ExeBox.Wpf.Model
             Instance.PrintMainLog(eLogType.Error, content);
             Instance.ErrorCount++;
         }
+        /// <summary>
+        /// 状态栏打印
+        /// </summary>
+        /// <param name="tip"></param>
+        public static void LogTip(string tip)
+        {
+            Instance.Tip = tip;
+        }
         public static void ClearRemainTasks(List<LogTaskConfig> configs)
         {
+            List<string> processes = new List<string>();
+            //提取进程名
             foreach (var config in configs)
+            {
+                processes.Add(Path.GetFileNameWithoutExtension(config.ExecFile));
+            }
+            processes = processes.Distinct().ToList();
+            //清理进程
+            foreach (var process in processes)
             {
                 try
                 {
                     //精确进程名  用GetProcessesByName
-                    foreach (Process p in Process.GetProcessesByName(config.ExecFile))
+                    foreach (Process p in Process.GetProcessesByName(process))
                     {
                         if (!p.CloseMainWindow())
                         {
                             p.Kill();
                         }
+                        LogTaskManager.LogMessage($"[ClearRemainTasks]清除进程[{process}]");
                     }
                 }
-                catch
+                catch (Exception e)
                 {
-
+                    //LogTaskManager.LogError($"[ClearRemainTasks]{e.GetType().FullName}:{e.Message}");
                 }
+            }
+
+            Thread.Sleep(300);
+            //检查
+            foreach (var process in processes)
+            {
+                LogTaskManager.LogMessage($"[ClearRemainTasks]进程[{process}]剩余数量: {Process.GetProcessesByName(process).Length}");
             }
         }
     }

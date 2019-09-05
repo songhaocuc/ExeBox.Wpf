@@ -190,7 +190,8 @@ namespace ExeBox.Wpf.Model
             }
             m_ExecProcess = null;
             //Status = eLogTaskStatus.Terminated;
-            int i = 10;
+            // Kill之后等0.3s
+            int i = 30;
             while(this.Status!= eLogTaskStatus.Terminated && i-- > 0)
             {
                 Thread.Sleep(10);

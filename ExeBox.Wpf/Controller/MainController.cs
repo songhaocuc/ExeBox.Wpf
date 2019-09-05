@@ -18,7 +18,8 @@ namespace ExeBox.Wpf.Controller
         MainWindow main;
         Model.LogTaskManager manager;
         Dictionary<Model.LogTask, LayoutDocument> m_Documents;
-        //List<Model.LogTaskConfig> m_Configs;
+        // 从配置文件中加载的任务（包含未选择的）
+        List<Model.LogTaskConfig> m_Configs;
         List<View.TaskSelection> m_TaskSelections;
 
         public MainController(MainWindow mainWindow)
@@ -41,6 +42,7 @@ namespace ExeBox.Wpf.Controller
             #endregion
             main.mainLogPane.DataContext = manager;
 
+            main.statusBar.DataContext = manager;
             #region 初始化任务浏览器 ↖
 
             #endregion
@@ -140,6 +142,15 @@ namespace ExeBox.Wpf.Controller
                 }
 
                 m_TaskSelections.Add(new View.TaskSelection() { Config = config, IsSelected = enabled });
+            }
+
+            m_Configs = new List<Model.LogTaskConfig>(configs);
+
+            //询问是否清理残留进程
+            MessageBoxResult result = MessageBox.Show("是否清理残留进程？", "清理残留进程",  MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (result == MessageBoxResult.OK)
+            {
+                Model.LogTaskManager.ClearRemainTasks(configs);
             }
 
 
@@ -319,8 +330,10 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem == null) return;
 
                 var task = treeItem.DataContext as Model.LogTask;
-                task.Restart(false);
-                ShowDocument(task);
+                task.Restart(false, ()=>
+                {
+                    this.main.Dispatcher.Invoke(() => { ShowDocument(task); });
+                });
             };
             main.CommandBindings.Add(restartCommandBinding);
 
@@ -400,11 +413,15 @@ namespace ExeBox.Wpf.Controller
             };
             restartAllCommandBinding.Executed += (sneder, e) =>
             {
-                manager.RestartAllTasks();
-                foreach (var task in manager.Tasks)
+                manager.RestartAllTasks(()=>
                 {
-                    ShowDocument(task);
-                }
+                    this.main.Dispatcher.Invoke(() => {
+                        foreach (var task in manager.Tasks)
+                        {
+                            ShowDocument(task);
+                        }
+                    });
+                });
             };
             main.CommandBindings.Add(restartAllCommandBinding);
 
@@ -462,9 +479,29 @@ namespace ExeBox.Wpf.Controller
             };
             helpAboutCommandBinding.Executed += (sender, e) =>
             {
-                MessageBox.Show("像素软件 寻仙手游2 程序部 \n宋昊 \n欢迎反馈BUG");
+                View.AboutCard about = new View.AboutCard();
+                about.Top = main.Top + main.Height / 2 - about.Height / 2;
+                about.Left = main.Left + main.Width / 2 - about.Width / 2;
+                about.ShowDialog();
+                e.Handled = true;
             };
             main.CommandBindings.Add(helpAboutCommandBinding);
+
+            //13 清理残留进程
+            CommandBinding clearRemainTasksCommandBinding = new CommandBinding();
+            clearRemainTasksCommandBinding.Command = Command.ExeboxCommands.ClearRemainTasks;
+            clearRemainTasksCommandBinding.CanExecute += (sender, e) =>
+            {
+                e.CanExecute = true;
+                e.Handled = true;
+            };
+            clearRemainTasksCommandBinding.Executed += (sender, e) =>
+            {
+                Model.LogTaskManager.ClearRemainTasks(m_Configs);
+                e.Handled = true;
+            };
+            main.CommandBindings.Add(clearRemainTasksCommandBinding);
+
         }
 
         // 更新所选任务

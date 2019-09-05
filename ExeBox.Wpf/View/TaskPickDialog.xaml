@@ -7,7 +7,7 @@
     xmlns:local="clr-namespace:ExeBox.Wpf.View"
     mc:Ignorable="d"
     Icon="/Resources/Icon/exebox_32.ico"
-    Title="TaskPickDialog"
+    Title="选择任务"
     Height="300"
     Width="650">
     <Window.Resources>

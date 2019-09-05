@@ -74,6 +74,7 @@ namespace ExeBox.Wpf.Controller
             };
             m_Panel.logListBox.PreviewMouseWheel += (sender, e) =>
             {
+                //向上滚动滑轮 停止自动滚动
                 if (e.Delta > 0)
                 {
                     m_IsAutoScroll = false;
@@ -129,34 +130,6 @@ namespace ExeBox.Wpf.Controller
                 }
             };
 
-            //// 保存日志
-            //m_Panel.saveButton.Click += (sender, e) =>
-            //{
-            //    List<Model.Log> logList = new List<Model.Log>();
-            //    var task = m_Panel.DataContext as Model.LogTask;
-
-            //    if (task != null)
-            //    {
-            //        logList = task.Logs.ToList();
-            //    }
-            //    var saveFileDialog = new SaveFileDialog()
-            //    {
-            //        Filter = "文本文件（*.txt）|*.txt",
-            //        Title = "保存日志"
-            //    };
-            //    saveFileDialog.FileName = string.Format("{0}_{1}",task.Config.Name,DateTime.Now.ToString("yyyyMMddHHmmss"));
-            //    saveFileDialog.ShowDialog();
-            //    if (string.IsNullOrEmpty(saveFileDialog.FileName)) return;
-            //    using (var sw = new StreamWriter(saveFileDialog.FileName))
-            //    {
-
-            //        foreach (var log in logList)
-            //        {
-            //            sw.WriteLine(log.Content);
-            //        }
-
-            //    }
-            //};
         }
 
         /// <summary>
@@ -217,6 +190,7 @@ namespace ExeBox.Wpf.Controller
                     }
                 }
                 Clipboard.SetDataObject(copyedContent.ToString());
+                Model.LogTaskManager.LogTip("复制完成");
                 e.Handled = true;
             };
             m_Panel.CommandBindings.Add(copyCommandBinding);
@@ -236,7 +210,7 @@ namespace ExeBox.Wpf.Controller
             };
             m_Panel.CommandBindings.Add(selectAllCommandBinding);
 
-            // 全选 （快捷键使用时不是由下面函数响应的）
+            // 保存日志
             CommandBinding saveLogsCommandBinding = new CommandBinding();
             saveLogsCommandBinding.Command = Command.ExeboxCommands.SaveLogs;
             saveLogsCommandBinding.CanExecute += (sender, e) =>

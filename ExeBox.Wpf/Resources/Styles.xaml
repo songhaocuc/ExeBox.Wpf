@@ -906,7 +906,7 @@
                             StaysOpen="True">
                             <MenuItem
                                 Header="打开日志页"
-                                Icon="{StaticResource menu_item_image_open }"
+                                Icon="{StaticResource menu_item_image_document }"
                                 Command="{x:Static cmd:ExeboxCommands.OpenPage}" />
                             <MenuItem
                                 Header="关闭日志页"

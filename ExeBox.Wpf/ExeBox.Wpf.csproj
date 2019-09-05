@@ -64,6 +64,9 @@
     <Compile Include="Controller\LogPanelController.cs" />
     <Compile Include="Controller\MainController.cs" />
     <Compile Include="Utils\Extensions.cs" />
+    <Compile Include="View\AboutCard.xaml.cs">
+      <DependentUpon>AboutCard.xaml</DependentUpon>
+    </Compile>
     <Compile Include="View\LogPanel.xaml.cs">
       <DependentUpon>LogPanel.xaml</DependentUpon>
     </Compile>
@@ -92,6 +95,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Resources\Styles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="View\AboutCard.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

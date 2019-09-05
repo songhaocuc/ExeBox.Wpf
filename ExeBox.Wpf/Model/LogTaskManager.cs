@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
 
 namespace ExeBox.Wpf.Model
 {
@@ -26,15 +27,20 @@ namespace ExeBox.Wpf.Model
         private static class LogTaskManagerInstance
         {
             public static readonly LogTaskManager INSTANCE = new LogTaskManager();
+            
         }
         private LogTaskManager()
         {
             Logs = new ObservableCollection<Log>();
             Tasks = new ObservableCollection<LogTask>();
+            m_LogsLock = new object();
+            BindingOperations.EnableCollectionSynchronization(Logs, m_LogsLock);
         }
 
         //打印ExeBox的日志
         public ObservableCollection<Log> Logs { get; set; }
+        private object m_LogsLock;
+
         private int m_MessageCount;
         private int m_ErrorCount;
         public int MessageCount
@@ -128,6 +134,7 @@ namespace ExeBox.Wpf.Model
             // 按照优先级降序结束
             var tasks = PriorityTaskQueue(false);
             DoStopTasks(tasks);
+            LogTaskManager.LogTip($"正常停止任务可能会花费1~2分钟的时间，请稍等片刻。");
         }
 
         //递归结束剩余的任务
@@ -220,14 +227,11 @@ namespace ExeBox.Wpf.Model
         private void ActionByPriority(bool up, Action<LogTask> action)
         {
             var tasks = new List<LogTask>(this.Tasks);
-            tasks.Sort((LogTask t1, LogTask t2) =>
+            tasks.OrderBy(t => t.Config.Priority);
+            if (up == false)
             {
-                var p1 = t1.Config.Priority;
-                var p2 = t2.Config.Priority;
-                // up 按照升序
-                var result = up ? p1 - p2 : p2 - p1;
-                return result;
-            });
+                tasks.Reverse();
+            }
 
             foreach (var task in tasks)
             {
@@ -238,18 +242,30 @@ namespace ExeBox.Wpf.Model
         /// 获取按优先级排列的任务队列，up为true时 优先级低的在队前
         /// </summary>
         /// <param name="up"></param>
-        /// <returns></returns>
+        /// <returns>
+        /// 返回按优先级排序后的队列，up为true时优先级低的在队首
+        /// 为兼容没有优先级设定的配置文件，默认位置靠前的任务优先级低
+        /// 采用稳定排序，up为false时先反转
+        /// </returns>
         private Queue<LogTask> PriorityTaskQueue(bool up)
         {
             var tasks = new List<LogTask>(this.Tasks);
-            tasks.Sort((LogTask t1, LogTask t2) =>
+            
+            //Sort是不稳定排序，因此换用linq的方法
+            //tasks.Sort((LogTask t1, LogTask t2) =>
+            //{
+            //    var p1 = t1.Config.Priority;
+            //    var p2 = t2.Config.Priority;
+            //    // up 按照升序
+            //    var result = p1 - p2;
+            //    return result;
+            //});
+
+            tasks.OrderBy(t=>t.Config.Priority);
+            if (up == false)
             {
-                var p1 = t1.Config.Priority;
-                var p2 = t2.Config.Priority;
-                // up 按照升序
-                var result = up ? p1 - p2 : p2 - p1;
-                return result;
-            });
+                tasks.Reverse();
+            }
             return new Queue<LogTask>(tasks);
         }
 

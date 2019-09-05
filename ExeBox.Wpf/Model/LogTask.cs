@@ -135,6 +135,7 @@ namespace ExeBox.Wpf.Model
             {
                 m_ExecProcess.WaitForExit();
                 Status = eLogTaskStatus.Terminated;
+                LogTaskManager.LogMessage($"任务[{this.Config.Name}]已退出");
                 //m_StatusObserver.Abort();
                 PreviousProcessExited?.Invoke();
                 PreviousProcessExited = null;
@@ -159,6 +160,7 @@ namespace ExeBox.Wpf.Model
             // 检测进程是否关闭
             m_StatusObserver.Start();
             Status = eLogTaskStatus.Running;
+            LogTaskManager.LogMessage($"任务[{this.Config.Name}]已启动");
         }
 
 
@@ -177,6 +179,7 @@ namespace ExeBox.Wpf.Model
             this.Status = eLogTaskStatus.Stopping;
             this.PreviousProcessExited += callback;
             Win32Dll.SetEvent(h);
+            LogTaskManager.LogMessage($"已通知任务[{this.Config.Name}]退出");
         }
 
         /// <summary>

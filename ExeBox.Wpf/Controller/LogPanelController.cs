@@ -244,6 +244,7 @@ namespace ExeBox.Wpf.Controller
                     }
 
                 }
+                Model.LogTaskManager.LogTip($"{task.Config.Name}日志已保存");
                 e.Handled = true;
             };
             m_Panel.CommandBindings.Add(saveLogsCommandBinding);

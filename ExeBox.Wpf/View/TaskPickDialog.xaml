@@ -55,6 +55,10 @@
                                             FontWeight="Bold" />
                                         <TextBlock
                                             Text="优先级高的任务后启动，先关闭。" />
+                                        <TextBlock
+                                            Text="优先级相同时默认位置靠前的任务先启动、后关闭。" />
+                                        <TextBlock
+                                            Text="对应ExecBox.xml中run的priority属性。" />
                                     </StackPanel>
                                 </TextBlock.ToolTip>
                             </TextBlock>

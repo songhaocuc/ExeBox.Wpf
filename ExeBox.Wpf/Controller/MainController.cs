@@ -21,6 +21,7 @@ namespace ExeBox.Wpf.Controller
         // 从配置文件中加载的任务（包含未选择的）
         List<Model.LogTaskConfig> m_Configs;
         List<View.TaskSelection> m_TaskSelections;
+        bool m_DirectExit = false;
 
         public MainController(MainWindow mainWindow)
         {
@@ -69,19 +70,38 @@ namespace ExeBox.Wpf.Controller
             #endregion
             InitCommandHandler();
 
+            #region 开始所有任务
+
+            #endregion
             manager.StartAllTasks();
+            foreach (var task in manager.Tasks)
+            {
+                ShowDocument(task);
+            }
+
+
             main.Closing += (sender, e) =>
             {
-                MessageBoxResult result = System.Windows.MessageBox.Show("关闭所有任务并退出？", "提示", MessageBoxButton.OKCancel, MessageBoxImage.None);
-                if (result == MessageBoxResult.OK)
+                if (m_DirectExit)
                 {
                     e.Cancel = false;
-                    bool wait = true;
-                    manager.StopAllTasks(()=> { wait = false; });
-                    while (wait)
+                    return;
+                }
+
+                MessageBoxResult result = System.Windows.MessageBox.Show("正常关闭所有任务并退出？\n[Yes]:任务将会正常停止，这可能会花费一些时间。\n[No]:将会强制退出", "提示", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
+                if (result == MessageBoxResult.Yes)
+                {
+                    e.Cancel = true;
+                    manager.StopAllTasks(() =>
                     {
-                        Thread.Sleep(10);
-                    }
+                        m_DirectExit = true;
+                        Environment.Exit(0);
+                    });
+                }else if (result == MessageBoxResult.No)
+                {
+                    manager.EndAllTasks();
+                    m_DirectExit = true;
+                    Environment.Exit(0);
                 }
                 if (result == MessageBoxResult.Cancel)
                 {
@@ -116,7 +136,7 @@ namespace ExeBox.Wpf.Controller
 
                 }
                 // param 不能为空
-                if(param == string.Empty)
+                if (param == string.Empty)
                 {
                     Model.LogTaskManager.LogError($"Empty [param] arrtibute, [name]:{name}");
                     break;
@@ -147,7 +167,7 @@ namespace ExeBox.Wpf.Controller
             m_Configs = new List<Model.LogTaskConfig>(configs);
 
             //询问是否清理残留进程
-            MessageBoxResult result = MessageBox.Show("是否清理残留进程？", "清理残留进程",  MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            MessageBoxResult result = MessageBox.Show("是否清理残留进程（清理与配置文件中exe文件的同名进程）？", "清理残留进程", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (result == MessageBoxResult.OK)
             {
                 Model.LogTaskManager.ClearRemainTasks(configs);
@@ -236,6 +256,7 @@ namespace ExeBox.Wpf.Controller
 
                 var task = treeItem.DataContext as Model.LogTask;
                 ShowDocument(task);
+                Model.LogTaskManager.LogTip($"打开[{task.Config.Name}]日志页");
             };
             main.CommandBindings.Add(openCommandBinding);
 
@@ -317,7 +338,7 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem != null && treeItem.DataContext is Model.LogTask)
                 {
                     var task = treeItem.DataContext as Model.LogTask;
-                    if(task != null && task.Status != Model.eLogTaskStatus.Stopping)
+                    if (task != null && task.Status != Model.eLogTaskStatus.Stopping)
                     {
                         e.CanExecute = true;
                     }
@@ -330,7 +351,7 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem == null) return;
 
                 var task = treeItem.DataContext as Model.LogTask;
-                task.Restart(false, ()=>
+                task.Restart(false, () =>
                 {
                     this.main.Dispatcher.Invoke(() => { ShowDocument(task); });
                 });
@@ -413,9 +434,10 @@ namespace ExeBox.Wpf.Controller
             };
             restartAllCommandBinding.Executed += (sneder, e) =>
             {
-                manager.RestartAllTasks(()=>
+                manager.RestartAllTasks(() =>
                 {
-                    this.main.Dispatcher.Invoke(() => {
+                    this.main.Dispatcher.Invoke(() =>
+                    {
                         foreach (var task in manager.Tasks)
                         {
                             ShowDocument(task);

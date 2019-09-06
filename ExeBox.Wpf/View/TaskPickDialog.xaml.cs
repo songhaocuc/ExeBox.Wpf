@@ -24,10 +24,12 @@ namespace ExeBox.Wpf.View
     /// </summary>
     public partial class TaskPickDialog : Window
     {
-        public TaskPickDialog(ref List<TaskSelection> selections)
+        public TaskPickDialog(bool changeFile, ref List<TaskSelection> selections)
         {
             InitializeComponent();
             selectionList.ItemsSource = selections;
+            clearCheck.Visibility = changeFile ? Visibility.Visible : Visibility.Collapsed;
+            clearCheck.IsChecked = changeFile;
         }
     }
 }

@@ -26,7 +26,6 @@ namespace ExeBox.Wpf.Controller
         List<Model.LogTaskConfig> m_Configs;
         List<View.TaskSelection> m_TaskSelections;
         bool m_DirectExit = false;
-        bool m_FirstSelected = true;
 
         public MainController(MainWindow mainWindow)
         {
@@ -212,7 +211,7 @@ namespace ExeBox.Wpf.Controller
 
             //选择启动进程 弹出选择界面
             //在启动界面如果选择关闭选择界面 则认为什么都不选并退出程序
-            View.TaskPickDialog dialog = new View.TaskPickDialog(ref m_TaskSelections);
+            View.TaskPickDialog dialog = new View.TaskPickDialog(true, ref m_TaskSelections);
             bool closedByEnsure = false;
             dialog.ensureButton.Click += (_sender, _e) =>
             {
@@ -527,7 +526,7 @@ namespace ExeBox.Wpf.Controller
             modifySelectionsCommandBinding.Executed += (sender, e) =>
             {
                 var selections = new List<View.TaskSelection>(m_TaskSelections);
-                View.TaskPickDialog dialog = new View.TaskPickDialog(ref selections);
+                View.TaskPickDialog dialog = new View.TaskPickDialog(false, ref selections);
                 dialog.ensureButton.Click += (_sender, _e) =>
                 {
                     dialog.Close();

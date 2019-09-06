@@ -224,6 +224,8 @@ namespace ExeBox.Wpf.Model
             Configs.Clear();
             Tasks.Clear();
             Logs.Clear();
+            ErrorCount = 0;
+            MessageCount = 0;
             Tip = string.Empty;
         }
 

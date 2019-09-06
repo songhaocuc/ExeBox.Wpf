@@ -18,7 +18,7 @@ namespace ExeBox.Wpf.Model
     ///     提供用于界面数据绑定的状态、配置、日志、日志总数等属性；
     ///     提供操控进程的接口。
     /// </summary>
-    class LogTask : INotifyPropertyChanged
+    class LogTask : INotifyPropertyChanged, ILoggable
     {
         const string EVENT_PREFIX = @"Global\XXSY2SERVER";
 
@@ -65,8 +65,20 @@ namespace ExeBox.Wpf.Model
             }
         }
 
+        public string TaskName
+        {
+            get
+            {
+                return Config.Name;
+            }
+        }
+
         //该线程用于监测任务进程是否结束
         private Thread m_StatusObserver;
+        //读取stdout
+        private Thread m_OutputObserver;
+        //读取stderr
+        private Thread m_ErrorObserver;
 
         //该事件表示任务进程结束,用于在任务重启时使用
         public event PreviousTaskStoppedEventHandler PreviousProcessExited;
@@ -110,26 +122,6 @@ namespace ExeBox.Wpf.Model
 
             m_ExecProcess.StartInfo = startInfo;
 
-            //设置Output输出回调
-            m_ExecProcess.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
-            {
-                if (!String.IsNullOrEmpty(e.Data))
-                {
-                    MessageCount++;
-                    PrintLog(eLogType.Message, e.Data);
-                }
-            });
-
-            //设置Error输出回调
-            m_ExecProcess.ErrorDataReceived += new DataReceivedEventHandler((sender, e) =>
-            {
-                if (!String.IsNullOrEmpty(e.Data))
-                {
-                    ErrorCount++;
-                    PrintLog(eLogType.Error, e.Data);
-                }
-            });
-
             //进程的监控线程
             m_StatusObserver = new Thread(() =>
             {
@@ -139,6 +131,32 @@ namespace ExeBox.Wpf.Model
                 //m_StatusObserver.Abort();
                 PreviousProcessExited?.Invoke();
                 PreviousProcessExited = null;
+            });
+
+            m_OutputObserver = new Thread(() =>
+            {
+                while (m_ExecProcess != null && !m_ExecProcess.HasExited)
+                {
+                    string output = m_ExecProcess.StandardOutput.ReadLine();
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        MessageCount++;
+                        PrintLog(eLogType.Message, output);
+                    }
+                }
+            });
+
+            m_ErrorObserver = new Thread(() =>
+            {
+                while (m_ExecProcess != null && !m_ExecProcess.HasExited)
+                {
+                    string error = m_ExecProcess.StandardError.ReadLine();
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        ErrorCount++;
+                        PrintLog(eLogType.Error, error);
+                    }
+                }
             });
         }
 
@@ -151,16 +169,27 @@ namespace ExeBox.Wpf.Model
             if (this.Status != eLogTaskStatus.Terminated) return;
             Clear();
             Init();
-            m_ExecProcess.Start();
-            // Asynchronously read the standard output of the spawned process. 
-            // This raises OutputDataReceived events for each line of output.
-            m_ExecProcess.BeginOutputReadLine();
-            m_ExecProcess.BeginErrorReadLine();
+            try
+            {
+                m_ExecProcess.Start();
 
-            // 检测进程是否关闭
-            m_StatusObserver.Start();
-            Status = eLogTaskStatus.Running;
-            LogTaskManager.LogMessage($"任务[{this.Config.Name}]已启动");
+                // Asynchronously read the standard output of the spawned process. 
+                // This raises OutputDataReceived events for each line of output.
+                //m_ExecProcess.BeginOutputReadLine();
+                //m_ExecProcess.BeginErrorReadLine();
+
+                m_OutputObserver.Start();
+                m_ErrorObserver.Start();
+                // 检测进程是否关闭
+                m_StatusObserver.Start();
+                Status = eLogTaskStatus.Running;
+                LogTaskManager.LogMessage($"任务[{this.Config.Name}]已启动");
+            }
+            catch (Exception e)
+            {
+                LogTaskManager.LogError($"任务[{this.Config.Name}]启动失败:{e?.Message}");
+                Clear();
+            }
         }
 
 
@@ -195,7 +224,7 @@ namespace ExeBox.Wpf.Model
             //Status = eLogTaskStatus.Terminated;
             // Kill之后等0.3s
             int i = 30;
-            while(this.Status!= eLogTaskStatus.Terminated && i-- > 0)
+            while (this.Status != eLogTaskStatus.Terminated && i-- > 0)
             {
                 Thread.Sleep(10);
                 if (i == 0) LogTaskManager.LogError(string.Format("Task {0} End Timeout", this.Config.Name));

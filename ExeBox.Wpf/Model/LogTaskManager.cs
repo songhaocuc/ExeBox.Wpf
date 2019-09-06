@@ -12,11 +12,11 @@ using System.Windows.Data;
 
 namespace ExeBox.Wpf.Model
 {
-    class LogTaskManager : INotifyPropertyChanged
+    class LogTaskManager : INotifyPropertyChanged, ILoggable
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        //先用单例来实现LogTaskManager
+        #region 先用单例来实现LogTaskManager
         public static LogTaskManager Instance
         {
             get
@@ -27,17 +27,41 @@ namespace ExeBox.Wpf.Model
         private static class LogTaskManagerInstance
         {
             public static readonly LogTaskManager INSTANCE = new LogTaskManager();
-            
+
         }
         private LogTaskManager()
         {
             Logs = new ObservableCollection<Log>();
             Tasks = new ObservableCollection<LogTask>();
+            Configs = new List<LogTaskConfig>();
             m_LogsLock = new object();
             BindingOperations.EnableCollectionSynchronization(Logs, m_LogsLock);
         }
+        #endregion
 
-        //打印ExeBox的日志
+        private string m_FileName;
+
+        public string FileName
+        {
+            get { return m_FileName; }
+            set
+            {
+                m_FileName = value;
+                if (PropertyChanged != null)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs("FileName"));
+                }
+            }
+        }
+
+        public string TaskName {
+            get
+            {
+                return FileName;
+            }
+        }
+
+        //ExeBox的日志
         public ObservableCollection<Log> Logs { get; set; }
         private object m_LogsLock;
 
@@ -67,6 +91,15 @@ namespace ExeBox.Wpf.Model
                 }
             }
         }
+        public bool IsAllTasksExited { get {
+                foreach (var task in Tasks)
+                {
+                    if(task.Status != eLogTaskStatus.Terminated)
+                    { return false; }
+                }
+                return true;
+            } }
+
         //状态栏消息
         private string m_Tip;
         public string Tip
@@ -104,7 +137,6 @@ namespace ExeBox.Wpf.Model
             }
             LogTaskManager.LogMessage("初始化完成");
         }
-
         /// <summary>
         /// 启动所有任务（同步）
         /// </summary>
@@ -113,7 +145,6 @@ namespace ExeBox.Wpf.Model
             // 按优先级升序启动
             ActionByPriority(true, (t) => { t.Start(); });
         }
-
         /// <summary>
         /// 结束所有任务（同步）
         /// </summary>
@@ -122,8 +153,6 @@ namespace ExeBox.Wpf.Model
             // 按照优先级降序结束
             ActionByPriority(false, (t) => { t.End(); });
         }
-
-
         /// <summary>
         /// 停止所有任务（异步）
         /// </summary>
@@ -136,33 +165,6 @@ namespace ExeBox.Wpf.Model
             DoStopTasks(tasks);
             LogTaskManager.LogTip($"正常停止任务可能会花费1~2分钟的时间，请稍等片刻。");
         }
-
-        //递归结束剩余的任务
-        private void DoStopTasks(Queue<LogTask> remainTasks)
-        {
-            if (remainTasks.Count > 0)
-            {
-                var task = remainTasks.Dequeue();
-                if (task.Status == eLogTaskStatus.Running)
-                {
-                    task.Stop(() =>
-                    {
-                        DoStopTasks(remainTasks);
-                    });
-                }
-                else
-                {
-                    DoStopTasks(remainTasks);
-                }
-
-            }
-            else
-            {
-                AllTasksStopped?.Invoke();
-                AllTasksStopped = null;
-            }
-        }
-
         /// <summary>
         /// 重启所有任务(异步)
         /// </summary>
@@ -174,7 +176,6 @@ namespace ExeBox.Wpf.Model
                 callback?.Invoke();
             });
         }
-
         /// <summary>
         /// 强制重启所有任务（同步）
         /// </summary>
@@ -183,7 +184,6 @@ namespace ExeBox.Wpf.Model
             EndAllTasks();
             StartAllTasks();
         }
-
         /// <summary>
         /// 添加新的日志任务
         /// </summary>
@@ -218,12 +218,120 @@ namespace ExeBox.Wpf.Model
             return removedTask;
         }
 
+        public void Clear()
+        {
+            EndAllTasks();
+            Configs.Clear();
+            Tasks.Clear();
+            Logs.Clear();
+            Tip = string.Empty;
+        }
 
+        /// <summary>
+        /// 打印ExeBox消息日志
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="content"></param>
+        public static void LogMessage(string content)
+        {
+            Instance.PrintMainLog(eLogType.Message, content);
+            Instance.MessageCount++;
+        }
+        /// <summary>
+        /// 打印ExeBox错误日志
+        /// </summary>
+        /// <param name="content"></param>
+        public static void LogError(string content)
+        {
+            Instance.PrintMainLog(eLogType.Error, content);
+            Instance.ErrorCount++;
+        }
+        /// <summary>
+        /// 状态栏打印
+        /// </summary>
+        /// <param name="tip"></param>
+        public static void LogTip(string tip)
+        {
+            Instance.Tip = tip;
+        }
+        /// <summary>
+        /// 清理所有相关进程（Configs中同名进程）
+        /// </summary>
+        /// <param name="configs"></param>
+        public static void ClearRemainTasks(List<LogTaskConfig> configs)
+        {
+            LogMessage($"清理[{Instance.FileName}]配置中的同名进程");
+            List<string> processes = new List<string>();
+            //提取进程名
+            foreach (var config in configs)
+            {
+                processes.Add(Path.GetFileNameWithoutExtension(config.ExecFile));
+            }
+            processes = processes.Distinct().ToList();
+            //清理进程
+            foreach (var process in processes)
+            {
+                try
+                {
+                    //精确进程名  用GetProcessesByName
+                    foreach (Process p in Process.GetProcessesByName(process))
+                    {
+                        if (!p.CloseMainWindow())
+                        {
+                            p.Kill();
+                        }
+                        LogTaskManager.LogMessage($"[ClearRemainTasks]清除进程[{process}]");
+                    }
+                }
+                catch
+                {
+                    //LogTaskManager.LogError($"[ClearRemainTasks]{e.GetType().FullName}:{e.Message}");
+                }
+            }
+
+            Thread.Sleep(300);
+            //检查
+            foreach (var process in processes)
+            {
+                LogTaskManager.LogMessage($"[ClearRemainTasks]进程[{process}]剩余数量: {Process.GetProcessesByName(process).Length}");
+            }
+        }
+
+
+
+        /// <summary>
+        /// 递归结束剩余的任务
+        /// </summary>
+        /// <param name="remainTasks"></param>
+        private void DoStopTasks(Queue<LogTask> remainTasks)
+        {
+            if (remainTasks.Count > 0)
+            {
+                var task = remainTasks.Dequeue();
+                if (task.Status == eLogTaskStatus.Running)
+                {
+                    task.Stop(() =>
+                    {
+                        DoStopTasks(remainTasks);
+                    });
+                }
+                else
+                {
+                    DoStopTasks(remainTasks);
+                }
+
+            }
+            else
+            {
+                AllTasksStopped?.Invoke();
+                AllTasksStopped = null;
+            }
+        }
         /// <summary>
         /// 按照优先级对任务进行操作
         /// </summary>
-        /// <param name="up">是否升序（升序：优先级低的先执行）</param>
-        /// <param name="action">操作内容</param>
+        /// <param name = "up" > 是否升序（升序：优先级低的先执行）</param>
+        /// <param name = "action" > 操作内容 </ param >
         private void ActionByPriority(bool up, Action<LogTask> action)
         {
             var tasks = new List<LogTask>(this.Tasks);
@@ -268,76 +376,17 @@ namespace ExeBox.Wpf.Model
             }
             return new Queue<LogTask>(tasks);
         }
-
-
-        private void PrintMainLog(eLogType type, string content)
-        {
-            Logs.Add(new Log() { Type = type, Content = content });
-        }
         /// <summary>
-        /// 打印ExeBox消息日志
+        /// 打印主日志
         /// </summary>
         /// <param name="type"></param>
         /// <param name="content"></param>
-        public static void LogMessage(string content)
+        private void PrintMainLog(eLogType type, string content)
         {
-            Instance.PrintMainLog(eLogType.Message, content);
-            Instance.MessageCount++;
+            content = $"[{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}]{content}";
+            Logs.Add(new Log() { Type = type, Content = content });
         }
-        /// <summary>
-        /// 打印ExeBox错误日志
-        /// </summary>
-        /// <param name="content"></param>
-        public static void LogError(string content)
-        {
-            Instance.PrintMainLog(eLogType.Error, content);
-            Instance.ErrorCount++;
-        }
-        /// <summary>
-        /// 状态栏打印
-        /// </summary>
-        /// <param name="tip"></param>
-        public static void LogTip(string tip)
-        {
-            Instance.Tip = tip;
-        }
-        public static void ClearRemainTasks(List<LogTaskConfig> configs)
-        {
-            List<string> processes = new List<string>();
-            //提取进程名
-            foreach (var config in configs)
-            {
-                processes.Add(Path.GetFileNameWithoutExtension(config.ExecFile));
-            }
-            processes = processes.Distinct().ToList();
-            //清理进程
-            foreach (var process in processes)
-            {
-                try
-                {
-                    //精确进程名  用GetProcessesByName
-                    foreach (Process p in Process.GetProcessesByName(process))
-                    {
-                        if (!p.CloseMainWindow())
-                        {
-                            p.Kill();
-                        }
-                        LogTaskManager.LogMessage($"[ClearRemainTasks]清除进程[{process}]");
-                    }
-                }
-                catch (Exception e)
-                {
-                    //LogTaskManager.LogError($"[ClearRemainTasks]{e.GetType().FullName}:{e.Message}");
-                }
-            }
 
-            Thread.Sleep(300);
-            //检查
-            foreach (var process in processes)
-            {
-                LogTaskManager.LogMessage($"[ClearRemainTasks]进程[{process}]剩余数量: {Process.GetProcessesByName(process).Length}");
-            }
-        }
     }
 
     public delegate void AllTasksStoppedEventHandler();

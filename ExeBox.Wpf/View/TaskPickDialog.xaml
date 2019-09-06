@@ -79,6 +79,8 @@
         Background="{StaticResource visual_studio_background_brush_main}">
         <Grid.RowDefinitions>
             <RowDefinition />
+            <RowDefinition 
+                Height="Auto"/>
             <RowDefinition
                 Height="Auto" />
         </Grid.RowDefinitions>
@@ -89,8 +91,11 @@
             ItemContainerStyle="{StaticResource select_item_container_style}">
 
         </ListBox>
+        <CheckBox Margin="10,5" Grid.Row="1" x:Name="clearCheck" IsChecked="True">
+            <TextBlock Text="清理残留进程"/>
+        </CheckBox>
         <Grid
-            Grid.Row="1">
+            Grid.Row="2">
             <Button
                 x:Name="ensureButton"
                 Height="20"

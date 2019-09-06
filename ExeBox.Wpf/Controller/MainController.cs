@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,6 +17,8 @@ namespace ExeBox.Wpf.Controller
 {
     class MainController
     {
+        const string DEFAULT_CONFIG_FILE = @"ExecBox.xml";
+
         MainWindow main;
         Model.LogTaskManager manager;
         Dictionary<Model.LogTask, LayoutDocument> m_Documents;
@@ -22,32 +26,43 @@ namespace ExeBox.Wpf.Controller
         List<Model.LogTaskConfig> m_Configs;
         List<View.TaskSelection> m_TaskSelections;
         bool m_DirectExit = false;
+        bool m_FirstSelected = true;
 
         public MainController(MainWindow mainWindow)
         {
             this.main = mainWindow ?? throw new ArgumentNullException("MainWindow argument can't be null.");
             manager = Model.LogTaskManager.Instance;
             m_Documents = new Dictionary<Model.LogTask, LayoutDocument>();
-            //m_Configs = new List<Model.LogTaskConfig>();
+            m_Configs = new List<Model.LogTaskConfig>();
             m_TaskSelections = new List<View.TaskSelection>();
         }
 
-        public void Init()
+        public void Init(string filepath = DEFAULT_CONFIG_FILE)
         {
-            var configs = LoadConfigFile();
+            
+            Clear();
+
+            //如果当前目录没有ExecBox.xml,选择自定义配置文件
+            while (!System.IO.File.Exists(filepath))
+            {
+                Model.LogTaskManager.LogError($"找不到配置文件:[{filepath}]");
+                filepath = SelectConfigFile();
+            }
+
+            manager.FileName = Path.GetFileNameWithoutExtension(filepath);
+            var configs = LoadConfigFile(filepath);
 
             manager.Init(configs);
+            main.DataContext = manager;
 
-            #region  初始化主进程日志 ↓
+            //初始化主进程日志 ↓
+            //main.mainLogPane.DataContext = manager;
+            //main.logExplorer.DataContext = manager;
+            //main.statusBar.DataContext = manager;
 
-            #endregion
-            main.mainLogPane.DataContext = manager;
+            //初始化任务浏览器 ↖
+            //main.logExplorer.ItemsSource = manager.Tasks;
 
-            main.statusBar.DataContext = manager;
-            #region 初始化任务浏览器 ↖
-
-            #endregion
-            main.logExplorer.ItemsSource = manager.Tasks;
             // 使TreeViewItem可以右键选中
             main.logExplorer.PreviewMouseRightButtonUp += (sender, e) =>
             {
@@ -88,7 +103,7 @@ namespace ExeBox.Wpf.Controller
                     return;
                 }
 
-                MessageBoxResult result = System.Windows.MessageBox.Show("正常关闭所有任务并退出？\n[Yes]:任务将会正常停止，这可能会花费一些时间。\n[No]:将会强制退出", "提示", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
+                MessageBoxResult result = System.Windows.MessageBox.Show("正常关闭所有任务并退出？\n    [Yes]:任务将会正常停止，这可能会花费一些时间。\n    [No]:将会强制退出", "提示", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
                 if (result == MessageBoxResult.Yes)
                 {
                     e.Cancel = true;
@@ -97,7 +112,8 @@ namespace ExeBox.Wpf.Controller
                         m_DirectExit = true;
                         Environment.Exit(0);
                     });
-                }else if (result == MessageBoxResult.No)
+                }
+                else if (result == MessageBoxResult.No)
                 {
                     manager.EndAllTasks();
                     m_DirectExit = true;
@@ -110,11 +126,32 @@ namespace ExeBox.Wpf.Controller
             };
         }
 
+        private string SelectConfigFile()
+        {
+            var filepath = string.Empty;
+            OpenFileDialog fileDialog = new OpenFileDialog();
+            fileDialog.Title = "请选择配置文件";
+            fileDialog.InitialDirectory = Environment.CurrentDirectory;
+            fileDialog.Filter = "XML files(*.xml)|*.xml|All files(*.*)|*.*";
+            fileDialog.RestoreDirectory = true;
+            bool? result = fileDialog.ShowDialog();
+            if (result == true)
+            {
+                filepath = fileDialog.FileName;
+                Environment.CurrentDirectory = Path.GetDirectoryName(filepath);
+            }
+            else
+            {
+                Environment.Exit(0);
+            }
+            return filepath;
+        }
+
         //从配置文件中加载配置
-        private List<Model.LogTaskConfig> LoadConfigFile()
+        private List<Model.LogTaskConfig> LoadConfigFile(string filepath)
         {
 
-            XElement file = XElement.Load(@"ExecBox.xml");
+            XElement file = XElement.Load(filepath);
             IEnumerable<XElement> elements = from element in file.Elements("run")
                                              select element;
             var configs = new List<Model.LogTaskConfig>();
@@ -166,13 +203,12 @@ namespace ExeBox.Wpf.Controller
 
             m_Configs = new List<Model.LogTaskConfig>(configs);
 
-            //询问是否清理残留进程
-            MessageBoxResult result = MessageBox.Show("是否清理残留进程（清理与配置文件中exe文件的同名进程）？", "清理残留进程", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            if (result == MessageBoxResult.OK)
-            {
-                Model.LogTaskManager.ClearRemainTasks(configs);
-            }
-
+            ////询问是否清理残留进程
+            //MessageBoxResult result = MessageBox.Show("是否清理残留进程（清理与配置文件中exe文件的同名进程）？", "清理残留进程", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            //if (result == MessageBoxResult.OK)
+            //{
+            //    Model.LogTaskManager.ClearRemainTasks(configs);
+            //}
 
             //选择启动进程 弹出选择界面
             //在启动界面如果选择关闭选择界面 则认为什么都不选并退出程序
@@ -181,6 +217,13 @@ namespace ExeBox.Wpf.Controller
             dialog.ensureButton.Click += (_sender, _e) =>
             {
                 closedByEnsure = true;
+                if (dialog.clearCheck.IsChecked == true)
+                {
+                    main.Dispatcher.Invoke(()=>
+                    {
+                        Model.LogTaskManager.ClearRemainTasks(configs);
+                    });
+                }
                 dialog.Close();
             };
             dialog.Closing += (_sender, _e) =>
@@ -200,7 +243,6 @@ namespace ExeBox.Wpf.Controller
             //dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             dialog.ShowDialog();
 
-
             foreach (var selection in m_TaskSelections)
             {
                 if (selection.IsSelected == false)
@@ -219,6 +261,15 @@ namespace ExeBox.Wpf.Controller
             {
                 AddTaskPage(task);
             }
+        }
+
+        private void Clear()
+        {
+            manager.Clear();
+            main.documentsRoot.Children.Clear();
+            m_Documents.Clear();
+            m_Configs.Clear();
+            m_TaskSelections.Clear();
         }
 
         //显示指定的日志
@@ -480,6 +531,13 @@ namespace ExeBox.Wpf.Controller
                 dialog.ensureButton.Click += (_sender, _e) =>
                 {
                     dialog.Close();
+                    if (dialog.clearCheck.IsChecked == true)
+                    {
+                        main.Dispatcher.Invoke(() =>
+                        {
+                            Model.LogTaskManager.ClearRemainTasks(m_Configs);
+                        });
+                    }
                     m_TaskSelections = selections;
                     UpdateTaskSelections();
                 };
@@ -524,6 +582,25 @@ namespace ExeBox.Wpf.Controller
             };
             main.CommandBindings.Add(clearRemainTasksCommandBinding);
 
+            //14 打开配置文件
+            CommandBinding openConfigCommandBinding = new CommandBinding();
+            openConfigCommandBinding.Command = Command.ExeboxCommands.OpenConfigFile;
+            openConfigCommandBinding.CanExecute += (sender, e) =>
+            {
+
+                e.CanExecute = Model.LogTaskManager.Instance.IsAllTasksExited;
+                e.Handled = true;
+            };
+            openConfigCommandBinding.Executed += (sender, e) =>
+            {
+                main.Dispatcher.Invoke(()=>
+                {
+                    Init(SelectConfigFile());
+                });
+
+                e.Handled = true;
+            };
+            main.CommandBindings.Add(openConfigCommandBinding);
         }
 
         // 更新所选任务

@@ -90,7 +90,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="root">
         <Grid.RowDefinitions>
             <RowDefinition
                 Height="auto" />
@@ -99,6 +99,29 @@
                 Height="20" />
         </Grid.RowDefinitions>
         <Menu>
+            <MenuItem
+                Header="文件"
+                Margin="5"
+                Height="20"
+                Style="{StaticResource menu_item_style_head}"
+                ItemContainerStyle="{StaticResource menu_item_style}">
+                <MenuItem
+                    Header="打开配置文件"
+                    Icon="{StaticResource menu_item_image_open_config }"
+                    Command="{x:Static cmd:ExeboxCommands.OpenConfigFile}" 
+                    ToolTipService.ShowOnDisabled="True">
+                    <MenuItem.ToolTip>
+                        
+                        <StackPanel
+                            Orientation="Vertical">
+                            <TextBlock
+                                Text="打开新的xml文件替换当前任务组" />
+                            <TextBlock
+                                Text="请先关闭当前所有任务" FontWeight="Heavy"/>
+                        </StackPanel>
+                    </MenuItem.ToolTip>
+                </MenuItem>
+            </MenuItem>
             <MenuItem
                 Header="任务"
                 Margin="5"
@@ -153,7 +176,6 @@
             </MenuItem>
         </Menu>
         <avalon:DockingManager
-            x:Name="taskBrowser"
             Grid.Row="1"
             Padding="20">
             <avalon:LayoutRoot>
@@ -176,7 +198,8 @@
                                             IsExpanded="True"
                                             ItemTemplate="{StaticResource log_config_item_data_template}"
                                             Style="{StaticResource tree_view_item_style_level_0}"
-                                            ItemContainerStyle="{StaticResource  tree_view_item_style_level_1}">
+                                            ItemContainerStyle="{StaticResource  tree_view_item_style_level_1}"
+                                            ItemsSource="{Binding Tasks}">
                                             <TreeViewItem.Header>
 
                                                 <StackPanel
@@ -186,9 +209,7 @@
                                                         Width="14"
                                                         Style="{StaticResource tree_view_item_image_style_config}"
                                                         Margin="5,0" />
-                                                    <TextBlock>
-                                                        ExecBox.xml
-                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding FileName}"/>
                                                 </StackPanel>
                                             </TreeViewItem.Header>
                                             <i:Interaction.Triggers>
@@ -220,7 +241,7 @@
                                 Title="ExeBox日志" CanHide="False">
                                 <local_view:LogPanel
                                     x:Name="mainLogPane"
-                                    DataContext="{Binding Logs}" />
+                                    DataContext="{Binding}" />
                             </avalon:LayoutAnchorable>
                         </avalon:LayoutAnchorablePane>
                     </avalon:LayoutAnchorablePaneGroup>

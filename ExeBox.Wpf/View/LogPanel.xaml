@@ -72,7 +72,8 @@
                 Margin="3"
                 Style="{StaticResource click_button_style}"
                 HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center">
+                VerticalContentAlignment="Center"
+                Command="{x:Static cmd:ExeboxCommands.SaveLogs}">
                 <Image
                     Stretch="Fill"
                     Source="{StaticResource save_button_image}" />

@@ -30,6 +30,52 @@
                 </DrawingImage.Drawing>
             </DrawingImage>
 
+            <DrawingImage x:Key="log_item_message_image_square">
+                <DrawingImage.Drawing>
+                    <DrawingGroup ClipGeometry="M0,0 V1024 H1024 V0 H0 Z">
+                        <DrawingGroup.Transform>
+                            <TranslateTransform X="1" Y="1" />
+                        </DrawingGroup.Transform>
+                        <DrawingGroup Opacity="1">
+                            <GeometryDrawing Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry RadiusX="100" RadiusY="100" Rect="0,0,1024,1024" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing Brush="#FF1BA1E2">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry RadiusX="100" RadiusY="100" Rect="62,62,900,900" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing Brush="#FFFFFFFF" Geometry="F1 M1024,1024z M0,0z M639.79657,716.4745L639.79657,767.59313Q639.79657,777.9766 632.20865,785.56452 624.62073,793.15244 614.23726,793.15245L409.76276,793.15245Q399.37928,793.15245 391.79137,785.56452 384.20346,777.97659 384.20345,767.59313L384.20345,716.4745Q384.20345,706.09103 391.79137,698.50311 399.37929,690.91519 409.76276,690.91519L435.32207,690.91519 435.32207,537.55931 409.76276,537.55931Q399.37928,537.55931 391.79137,529.97139 384.20346,522.38347 384.20345,512L384.20345,460.88137Q384.20345,450.4979 391.79137,442.90998 399.37929,435.32206 409.76276,435.32206L563.11864,435.32206Q573.50211,435.32206 581.09003,442.90998 588.67795,450.4979 588.67796,460.88137L588.67796,690.91519 614.23727,690.91519Q624.62075,690.91519 632.20866,698.50311 639.79657,706.09103 639.79658,716.4745L639.79657,716.4745z M588.67795,256.40687L588.67795,333.0848Q588.67795,343.46827 581.09002,351.05619 573.50209,358.64411 563.11863,358.64411L460.88138,358.64411Q450.49791,358.64411 442.90999,351.05619 435.32207,343.46827 435.32206,333.0848L435.32206,256.40687Q435.32206,246.02339 442.90999,238.43548 450.49792,230.84757 460.88138,230.84756L563.11863,230.84756Q573.5021,230.84756 581.09002,238.43548 588.67794,246.0234 588.67795,256.40687z" />
+                        </DrawingGroup>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+
+            <DrawingImage x:Key="log_item_error_image_square">
+                <DrawingImage.Drawing>
+                    <DrawingGroup ClipGeometry="M0,0 V1024 H1024 V0 H0 Z">
+                        <DrawingGroup.Transform>
+                            <TranslateTransform X="1" Y="1" />
+                        </DrawingGroup.Transform>
+                        <DrawingGroup Opacity="1">
+                            <GeometryDrawing Brush="#FFFFFFFF">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry RadiusX="100" RadiusY="100" Rect="0,0,1024,1024" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing Brush="#FFE51400">
+                                <GeometryDrawing.Geometry>
+                                    <RectangleGeometry RadiusX="100" RadiusY="100" Rect="62,62,900,900" />
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                            <GeometryDrawing Brush="#FFFFFFFF" Geometry="F1 M1024,1024z M0,0z M665.35039,265.22927L510.23735,420.34231 356.88696,265.22927 263.46661,358.64962 418.57965,513.76266 263.46661,667.11305 356.88696,758.77076 512,603.65772 667.11304,758.77076 760.53339,665.35041 603.6577,512.00002 757.00809,358.64963 665.35038,265.22928 665.35039,265.22927z" />
+                        </DrawingGroup>
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+            
             <!--Error图标-->
             <DrawingImage
                 x:Key="log_item_error_image">
@@ -263,6 +309,17 @@
                         <GeometryDrawing
                             Brush="{StaticResource visual_studio_icon_brush_common}"
                             Geometry="F1 M1024,1024z M0,0z M659,148L861,350 919,290C919,290 941,258 934,233 927,208 801,97 787,83 773,69 746,71 716,96 686,121 659,148 659,148z" />
+                    </DrawingGroup>
+                </DrawingImage.Drawing>
+            </DrawingImage>
+            <DrawingImage
+                x:Key="menu_item_image_open_config">
+                <DrawingImage.Drawing>
+                    <DrawingGroup
+                        ClipGeometry="M0,0 V1024 H1024 V0 H0 Z">
+                        <GeometryDrawing
+                            Brush="{StaticResource visual_studio_icon_brush_common}"
+                            Geometry="F1 M1024,1024z M0,0z M25.6,101.376L25.6,952.32 832.512,952.32 1013.76,465.92 1013.76,411.648 208.896,413.696 46.08,889.856 149.504,354.304 836.608,354.304 836.608,227.328 397.312,227.328 267.264,71.68 25.6,71.68z" />
                     </DrawingGroup>
                 </DrawingImage.Drawing>
             </DrawingImage>

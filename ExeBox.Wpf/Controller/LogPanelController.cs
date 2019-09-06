@@ -121,7 +121,7 @@ namespace ExeBox.Wpf.Controller
             // 清理日志
             m_Panel.clearAllButton.Click += (sender, e) =>
             {
-                var task = m_Panel.DataContext as Model.LogTask;
+                var task = m_Panel.DataContext as Model.ILoggable;
                 if (task != null)
                 {
                     task.Logs.Clear();
@@ -221,7 +221,7 @@ namespace ExeBox.Wpf.Controller
             saveLogsCommandBinding.Executed += (sneder, e) =>
             {
                 List<Model.Log> logList = new List<Model.Log>();
-                var task = m_Panel.DataContext as Model.LogTask;
+                var task = m_Panel.DataContext as Model.ILoggable;
 
                 if (task != null)
                 {
@@ -232,7 +232,7 @@ namespace ExeBox.Wpf.Controller
                     Filter = "文本文件（*.txt）|*.txt",
                     Title = "保存日志"
                 };
-                saveFileDialog.FileName = string.Format("{0}_{1}", task.Config.Name, DateTime.Now.ToString("yyyyMMddHHmmss"));
+                saveFileDialog.FileName = string.Format("{0}_{1}", task.TaskName, DateTime.Now.ToString("yyyyMMddHHmmss"));
                 saveFileDialog.ShowDialog();
                 if (string.IsNullOrEmpty(saveFileDialog.FileName)) return;
                 using (var sw = new StreamWriter(saveFileDialog.FileName))
@@ -244,6 +244,7 @@ namespace ExeBox.Wpf.Controller
                     }
 
                 }
+                Model.LogTaskManager.LogTip($"{task.TaskName}日志已保存");
                 e.Handled = true;
             };
             m_Panel.CommandBindings.Add(saveLogsCommandBinding);

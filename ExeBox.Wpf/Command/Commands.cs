@@ -13,7 +13,7 @@ namespace ExeBox.Wpf.Command
     /// </summary>
     class ExeboxCommands
     {
-        const int CommandAmount = 16;
+        const int CommandAmount = 17;
         private enum CommandId : byte
         {
             CopyLogs,                   //复制日志
@@ -33,6 +33,8 @@ namespace ExeBox.Wpf.Command
             ForceRestartAllTasks,       //强制重启所有任务
             ModifySelections,           //修改任务选择
             ClearRemainTasks,           //清理残留进程
+
+            OpenConfigFile,             //打开配置文件
 
             About,                      //程序相关
         }
@@ -54,6 +56,7 @@ namespace ExeBox.Wpf.Command
         public static RoutedUICommand ForceRestartAllTasks => _EnsureCommand(CommandId.ForceRestartAllTasks);
         public static RoutedUICommand ModifySelections => _EnsureCommand(CommandId.ModifySelections);
         public static RoutedUICommand ClearRemainTasks => _EnsureCommand(CommandId.ClearRemainTasks);
+        public static RoutedUICommand OpenConfigFile => _EnsureCommand(CommandId.OpenConfigFile);
         public static RoutedUICommand About => _EnsureCommand(CommandId.About);
 
         private static InputGestureCollection LoadDefaultGestureFromResource(CommandId commandId)

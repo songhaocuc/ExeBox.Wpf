@@ -8,14 +8,15 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
 
 namespace ExeBox.Wpf.Model
 {
-    class LogTaskManager : INotifyPropertyChanged
+    class LogTaskManager : INotifyPropertyChanged, ILoggable
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        //先用单例来实现LogTaskManager
+        #region 先用单例来实现LogTaskManager
         public static LogTaskManager Instance
         {
             get
@@ -26,15 +27,44 @@ namespace ExeBox.Wpf.Model
         private static class LogTaskManagerInstance
         {
             public static readonly LogTaskManager INSTANCE = new LogTaskManager();
+
         }
         private LogTaskManager()
         {
             Logs = new ObservableCollection<Log>();
             Tasks = new ObservableCollection<LogTask>();
+            Configs = new List<LogTaskConfig>();
+            m_LogsLock = new object();
+            BindingOperations.EnableCollectionSynchronization(Logs, m_LogsLock);
+        }
+        #endregion
+
+        private string m_FileName;
+
+        public string FileName
+        {
+            get { return m_FileName; }
+            set
+            {
+                m_FileName = value;
+                if (PropertyChanged != null)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs("FileName"));
+                }
+            }
         }
 
-        //打印ExeBox的日志
+        public string TaskName {
+            get
+            {
+                return FileName;
+            }
+        }
+
+        //ExeBox的日志
         public ObservableCollection<Log> Logs { get; set; }
+        private object m_LogsLock;
+
         private int m_MessageCount;
         private int m_ErrorCount;
         public int MessageCount
@@ -61,6 +91,15 @@ namespace ExeBox.Wpf.Model
                 }
             }
         }
+        public bool IsAllTasksExited { get {
+                foreach (var task in Tasks)
+                {
+                    if(task.Status != eLogTaskStatus.Terminated)
+                    { return false; }
+                }
+                return true;
+            } }
+
         //状态栏消息
         private string m_Tip;
         public string Tip
@@ -98,7 +137,6 @@ namespace ExeBox.Wpf.Model
             }
             LogTaskManager.LogMessage("初始化完成");
         }
-
         /// <summary>
         /// 启动所有任务（同步）
         /// </summary>
@@ -107,7 +145,6 @@ namespace ExeBox.Wpf.Model
             // 按优先级升序启动
             ActionByPriority(true, (t) => { t.Start(); });
         }
-
         /// <summary>
         /// 结束所有任务（同步）
         /// </summary>
@@ -116,8 +153,6 @@ namespace ExeBox.Wpf.Model
             // 按照优先级降序结束
             ActionByPriority(false, (t) => { t.End(); });
         }
-
-
         /// <summary>
         /// 停止所有任务（异步）
         /// </summary>
@@ -128,34 +163,8 @@ namespace ExeBox.Wpf.Model
             // 按照优先级降序结束
             var tasks = PriorityTaskQueue(false);
             DoStopTasks(tasks);
+            LogTaskManager.LogTip($"正常停止任务可能会花费1~2分钟的时间，请稍等片刻。");
         }
-
-        //递归结束剩余的任务
-        private void DoStopTasks(Queue<LogTask> remainTasks)
-        {
-            if (remainTasks.Count > 0)
-            {
-                var task = remainTasks.Dequeue();
-                if (task.Status == eLogTaskStatus.Running)
-                {
-                    task.Stop(() =>
-                    {
-                        DoStopTasks(remainTasks);
-                    });
-                }
-                else
-                {
-                    DoStopTasks(remainTasks);
-                }
-
-            }
-            else
-            {
-                AllTasksStopped?.Invoke();
-                AllTasksStopped = null;
-            }
-        }
-
         /// <summary>
         /// 重启所有任务(异步)
         /// </summary>
@@ -167,7 +176,6 @@ namespace ExeBox.Wpf.Model
                 callback?.Invoke();
             });
         }
-
         /// <summary>
         /// 强制重启所有任务（同步）
         /// </summary>
@@ -176,7 +184,6 @@ namespace ExeBox.Wpf.Model
             EndAllTasks();
             StartAllTasks();
         }
-
         /// <summary>
         /// 添加新的日志任务
         /// </summary>
@@ -211,53 +218,15 @@ namespace ExeBox.Wpf.Model
             return removedTask;
         }
 
-
-        /// <summary>
-        /// 按照优先级对任务进行操作
-        /// </summary>
-        /// <param name="up">是否升序（升序：优先级低的先执行）</param>
-        /// <param name="action">操作内容</param>
-        private void ActionByPriority(bool up, Action<LogTask> action)
+        public void Clear()
         {
-            var tasks = new List<LogTask>(this.Tasks);
-            tasks.Sort((LogTask t1, LogTask t2) =>
-            {
-                var p1 = t1.Config.Priority;
-                var p2 = t2.Config.Priority;
-                // up 按照升序
-                var result = up ? p1 - p2 : p2 - p1;
-                return result;
-            });
-
-            foreach (var task in tasks)
-            {
-                action(task);
-            }
-        }
-        /// <summary>
-        /// 获取按优先级排列的任务队列，up为true时 优先级低的在队前
-        /// </summary>
-        /// <param name="up"></param>
-        /// <returns></returns>
-        private Queue<LogTask> PriorityTaskQueue(bool up)
-        {
-            var tasks = new List<LogTask>(this.Tasks);
-            tasks.Sort((LogTask t1, LogTask t2) =>
-            {
-                var p1 = t1.Config.Priority;
-                var p2 = t2.Config.Priority;
-                // up 按照升序
-                var result = up ? p1 - p2 : p2 - p1;
-                return result;
-            });
-            return new Queue<LogTask>(tasks);
+            EndAllTasks();
+            Configs.Clear();
+            Tasks.Clear();
+            Logs.Clear();
+            Tip = string.Empty;
         }
 
-
-        private void PrintMainLog(eLogType type, string content)
-        {
-            Logs.Add(new Log() { Type = type, Content = content });
-        }
         /// <summary>
         /// 打印ExeBox消息日志
         /// </summary>
@@ -285,8 +254,13 @@ namespace ExeBox.Wpf.Model
         {
             Instance.Tip = tip;
         }
+        /// <summary>
+        /// 清理所有相关进程（Configs中同名进程）
+        /// </summary>
+        /// <param name="configs"></param>
         public static void ClearRemainTasks(List<LogTaskConfig> configs)
         {
+            LogMessage($"清理[{Instance.FileName}]配置中的同名进程");
             List<string> processes = new List<string>();
             //提取进程名
             foreach (var config in configs)
@@ -309,7 +283,7 @@ namespace ExeBox.Wpf.Model
                         LogTaskManager.LogMessage($"[ClearRemainTasks]清除进程[{process}]");
                     }
                 }
-                catch (Exception e)
+                catch
                 {
                     //LogTaskManager.LogError($"[ClearRemainTasks]{e.GetType().FullName}:{e.Message}");
                 }
@@ -322,6 +296,97 @@ namespace ExeBox.Wpf.Model
                 LogTaskManager.LogMessage($"[ClearRemainTasks]进程[{process}]剩余数量: {Process.GetProcessesByName(process).Length}");
             }
         }
+
+
+
+        /// <summary>
+        /// 递归结束剩余的任务
+        /// </summary>
+        /// <param name="remainTasks"></param>
+        private void DoStopTasks(Queue<LogTask> remainTasks)
+        {
+            if (remainTasks.Count > 0)
+            {
+                var task = remainTasks.Dequeue();
+                if (task.Status == eLogTaskStatus.Running)
+                {
+                    task.Stop(() =>
+                    {
+                        DoStopTasks(remainTasks);
+                    });
+                }
+                else
+                {
+                    DoStopTasks(remainTasks);
+                }
+
+            }
+            else
+            {
+                AllTasksStopped?.Invoke();
+                AllTasksStopped = null;
+            }
+        }
+        /// <summary>
+        /// 按照优先级对任务进行操作
+        /// </summary>
+        /// <param name = "up" > 是否升序（升序：优先级低的先执行）</param>
+        /// <param name = "action" > 操作内容 </ param >
+        private void ActionByPriority(bool up, Action<LogTask> action)
+        {
+            var tasks = new List<LogTask>(this.Tasks);
+            tasks.OrderBy(t => t.Config.Priority);
+            if (up == false)
+            {
+                tasks.Reverse();
+            }
+
+            foreach (var task in tasks)
+            {
+                action(task);
+            }
+        }
+        /// <summary>
+        /// 获取按优先级排列的任务队列，up为true时 优先级低的在队前
+        /// </summary>
+        /// <param name="up"></param>
+        /// <returns>
+        /// 返回按优先级排序后的队列，up为true时优先级低的在队首
+        /// 为兼容没有优先级设定的配置文件，默认位置靠前的任务优先级低
+        /// 采用稳定排序，up为false时先反转
+        /// </returns>
+        private Queue<LogTask> PriorityTaskQueue(bool up)
+        {
+            var tasks = new List<LogTask>(this.Tasks);
+            
+            //Sort是不稳定排序，因此换用linq的方法
+            //tasks.Sort((LogTask t1, LogTask t2) =>
+            //{
+            //    var p1 = t1.Config.Priority;
+            //    var p2 = t2.Config.Priority;
+            //    // up 按照升序
+            //    var result = p1 - p2;
+            //    return result;
+            //});
+
+            tasks.OrderBy(t=>t.Config.Priority);
+            if (up == false)
+            {
+                tasks.Reverse();
+            }
+            return new Queue<LogTask>(tasks);
+        }
+        /// <summary>
+        /// 打印主日志
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="content"></param>
+        private void PrintMainLog(eLogType type, string content)
+        {
+            content = $"[{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}]{content}";
+            Logs.Add(new Log() { Type = type, Content = content });
+        }
+
     }
 
     public delegate void AllTasksStoppedEventHandler();

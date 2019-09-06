@@ -94,7 +94,7 @@
                     Text="[邮箱]"
                     FontWeight="Heavy" />
                 <TextBox
-                    Text="songhao@pixelgame.com"/>
+                    Text="songhao@work.pixelgame.net"/>
             </StackPanel>
             <StackPanel
                 Orientation="Horizontal">

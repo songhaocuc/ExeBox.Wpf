@@ -24,6 +24,11 @@ namespace ExeBox.Wpf.View
     /// </summary>
     public partial class TaskPickDialog : Window
     {
+        /// <summary>
+        /// 任务选择界面
+        /// </summary>
+        /// <param name="changeFile">若修改文件，则显示清理进程选项</param>
+        /// <param name="selections"></param>
         public TaskPickDialog(bool changeFile, ref List<TaskSelection> selections)
         {
             InitializeComponent();

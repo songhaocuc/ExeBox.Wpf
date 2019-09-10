@@ -117,7 +117,7 @@
                             <TextBlock
                                 Text="打开新的xml文件替换当前任务组" />
                             <TextBlock
-                                Text="请先关闭当前所有任务" FontWeight="Heavy"/>
+                                Text="会强制结束当前所有任务" FontWeight="Heavy"/>
                         </StackPanel>
                     </MenuItem.ToolTip>
                 </MenuItem>

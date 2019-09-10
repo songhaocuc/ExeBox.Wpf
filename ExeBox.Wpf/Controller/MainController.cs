@@ -23,35 +23,45 @@ namespace ExeBox.Wpf.Controller
         Model.LogTaskManager manager;
         Dictionary<Model.LogTask, LayoutDocument> m_Documents;
         // 从配置文件中加载的任务（包含未选择的）
-        List<Model.LogTaskConfig> m_Configs;
+        List<Model.LogTaskConfig> m_RawConfigs;
+        // 选择的配置文件
+        List<Model.LogTaskConfig> m_TaskConfigs;
         List<View.TaskSelection> m_TaskSelections;
         bool m_DirectExit = false;
+        bool m_FirstOpen = true;
 
         public MainController(MainWindow mainWindow)
         {
             this.main = mainWindow ?? throw new ArgumentNullException("MainWindow argument can't be null.");
             manager = Model.LogTaskManager.Instance;
             m_Documents = new Dictionary<Model.LogTask, LayoutDocument>();
-            m_Configs = new List<Model.LogTaskConfig>();
+            m_RawConfigs = new List<Model.LogTaskConfig>();
+            m_TaskConfigs = new List<Model.LogTaskConfig>();
             m_TaskSelections = new List<View.TaskSelection>();
         }
 
         public void Init(string filepath = DEFAULT_CONFIG_FILE)
         {
-            
-            Clear();
+
+
 
             //如果当前目录没有ExecBox.xml,选择自定义配置文件
             while (!System.IO.File.Exists(filepath))
             {
-                Model.LogTaskManager.LogError($"找不到配置文件:[{filepath}]");
+                Model.LogTaskManager.LogMessage($"找不到配置文件:[{filepath}]，重新选择文件");
                 filepath = SelectConfigFile();
             }
 
             manager.FileName = Path.GetFileNameWithoutExtension(filepath);
-            var configs = LoadConfigFile(filepath);
+            if(!LoadConfigFile(filepath))
+            {
+                Model.LogTaskManager.LogMessage($"取消运行配置[{filepath}]");
+                return;
+            }
 
-            manager.Init(configs);
+            Clear();
+
+            manager.Init(m_TaskConfigs);
             main.DataContext = manager;
 
             //初始化主进程日志 ↓
@@ -102,7 +112,7 @@ namespace ExeBox.Wpf.Controller
                     return;
                 }
 
-                MessageBoxResult result = System.Windows.MessageBox.Show("正常关闭所有任务并退出？\n    [Yes]:任务将会正常停止，这可能会花费一些时间。\n    [No]:将会强制退出", "提示", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
+                MessageBoxResult result = System.Windows.MessageBox.Show("正常关闭所有任务并退出？\n    [-是-]:任务将会正常停止，这可能会花费一些时间。\n    [-否-]:将会强制退出任务。", "提示", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
                 if (result == MessageBoxResult.Yes)
                 {
                     e.Cancel = true;
@@ -147,13 +157,14 @@ namespace ExeBox.Wpf.Controller
         }
 
         //从配置文件中加载配置
-        private List<Model.LogTaskConfig> LoadConfigFile(string filepath)
+        private bool LoadConfigFile(string filepath)
         {
-
+            Model.LogTaskManager.LogMessage($"打开配置文件[{filepath}]");
             XElement file = XElement.Load(filepath);
             IEnumerable<XElement> elements = from element in file.Elements("run")
                                              select element;
             var configs = new List<Model.LogTaskConfig>();
+            var selections = new List<View.TaskSelection>();
             foreach (var element in elements)
             {
                 string name = "undefined";
@@ -196,38 +207,44 @@ namespace ExeBox.Wpf.Controller
                 {
 
                 }
-
-                m_TaskSelections.Add(new View.TaskSelection() { Config = config, IsSelected = enabled });
+                selections.Add(new View.TaskSelection() { Config = config, IsSelected = enabled });
             }
 
-            m_Configs = new List<Model.LogTaskConfig>(configs);
-
-            ////询问是否清理残留进程
-            //MessageBoxResult result = MessageBox.Show("是否清理残留进程（清理与配置文件中exe文件的同名进程）？", "清理残留进程", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-            //if (result == MessageBoxResult.OK)
-            //{
-            //    Model.LogTaskManager.ClearRemainTasks(configs);
-            //}
-
             //选择启动进程 弹出选择界面
-            //在启动界面如果选择关闭选择界面 则认为什么都不选并退出程序
-            View.TaskPickDialog dialog = new View.TaskPickDialog(true, ref m_TaskSelections);
+            //在首次启动时如果选择关闭选择界面 则认为什么都不选并退出程序
+            View.TaskPickDialog dialog = new View.TaskPickDialog(true, ref selections);
             bool closedByEnsure = false;
             dialog.ensureButton.Click += (_sender, _e) =>
             {
                 closedByEnsure = true;
+                // 确认之后再修改
+                m_TaskSelections = selections;
+                m_RawConfigs = new List<Model.LogTaskConfig>(configs);
+
+                // 清理残留进程
                 if (dialog.clearCheck.IsChecked == true)
                 {
-                    main.Dispatcher.Invoke(()=>
+                    main.Dispatcher.Invoke(() =>
                     {
                         Model.LogTaskManager.ClearRemainTasks(configs);
                     });
                 }
+
+                // 获取选择的任务
+                foreach (var selection in m_TaskSelections)
+                {
+                    if (selection.IsSelected == false)
+                    {
+                        configs.Remove(selection.Config);
+                    }
+                }
+                m_TaskConfigs = new List<Model.LogTaskConfig>(configs);
                 dialog.Close();
             };
             dialog.Closing += (_sender, _e) =>
             {
-                if (!closedByEnsure)
+                //第一次打开时，如果选择[X]则直接关闭
+                if (!closedByEnsure && m_FirstOpen)
                 {
                     foreach (var selection in m_TaskSelections)
                     {
@@ -236,21 +253,14 @@ namespace ExeBox.Wpf.Controller
                     main.Close();
                     Process.GetCurrentProcess().CloseMainWindow();
                 }
+                m_FirstOpen = false;
             };
             dialog.Top = main.Top + main.Height / 2 - dialog.Height / 2;
             dialog.Left = main.Left + main.Width / 2 - dialog.Width / 2;
             //dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             dialog.ShowDialog();
 
-            foreach (var selection in m_TaskSelections)
-            {
-                if (selection.IsSelected == false)
-                {
-                    configs.Remove(selection.Config);
-                }
-            }
-
-            return configs;
+            return closedByEnsure;
         }
 
         //为所有LogTask创建日志面板
@@ -267,8 +277,8 @@ namespace ExeBox.Wpf.Controller
             manager.Clear();
             main.documentsRoot.Children.Clear();
             m_Documents.Clear();
-            m_Configs.Clear();
-            m_TaskSelections.Clear();
+            //m_RawConfigs.Clear();
+            //m_TaskSelections.Clear();
         }
 
         //显示指定的日志
@@ -534,7 +544,7 @@ namespace ExeBox.Wpf.Controller
                     {
                         main.Dispatcher.Invoke(() =>
                         {
-                            Model.LogTaskManager.ClearRemainTasks(m_Configs);
+                            Model.LogTaskManager.ClearRemainTasks(m_RawConfigs);
                         });
                     }
                     m_TaskSelections = selections;
@@ -576,7 +586,7 @@ namespace ExeBox.Wpf.Controller
             };
             clearRemainTasksCommandBinding.Executed += (sender, e) =>
             {
-                Model.LogTaskManager.ClearRemainTasks(m_Configs);
+                Model.LogTaskManager.ClearRemainTasks(m_RawConfigs);
                 e.Handled = true;
             };
             main.CommandBindings.Add(clearRemainTasksCommandBinding);
@@ -587,12 +597,13 @@ namespace ExeBox.Wpf.Controller
             openConfigCommandBinding.CanExecute += (sender, e) =>
             {
 
-                e.CanExecute = Model.LogTaskManager.Instance.IsAllTasksExited;
+                //e.CanExecute = Model.LogTaskManager.Instance.IsAllTasksExited;
+                e.CanExecute = true;
                 e.Handled = true;
             };
             openConfigCommandBinding.Executed += (sender, e) =>
             {
-                main.Dispatcher.Invoke(()=>
+                main.Dispatcher.Invoke(() =>
                 {
                     Init(SelectConfigFile());
                 });

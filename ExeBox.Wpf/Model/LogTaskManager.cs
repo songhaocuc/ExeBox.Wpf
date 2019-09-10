@@ -91,6 +91,9 @@ namespace ExeBox.Wpf.Model
                 }
             }
         }
+
+        //防止重复结束
+        private bool m_StoppingAllTasks = false;
         public bool IsAllTasksExited { get {
                 foreach (var task in Tasks)
                 {
@@ -159,6 +162,8 @@ namespace ExeBox.Wpf.Model
         /// <param name="callback"></param>
         public void StopAllTasks(AllTasksStoppedEventHandler callback = null)
         {
+            if (m_StoppingAllTasks) return;
+            m_StoppingAllTasks = true;
             AllTasksStopped += callback;
             // 按照优先级降序结束
             var tasks = PriorityTaskQueue(false);

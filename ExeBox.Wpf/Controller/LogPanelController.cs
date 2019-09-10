@@ -233,18 +233,19 @@ namespace ExeBox.Wpf.Controller
                     Title = "保存日志"
                 };
                 saveFileDialog.FileName = string.Format("{0}_{1}", task.TaskName, DateTime.Now.ToString("yyyyMMddHHmmss"));
-                saveFileDialog.ShowDialog();
-                if (string.IsNullOrEmpty(saveFileDialog.FileName)) return;
-                using (var sw = new StreamWriter(saveFileDialog.FileName))
-                {
-
-                    foreach (var log in logList)
+                if (saveFileDialog.ShowDialog() == true){
+                    if (string.IsNullOrEmpty(saveFileDialog.FileName)) return;
+                    using (var sw = new StreamWriter(saveFileDialog.FileName))
                     {
-                        sw.WriteLine(log.Content);
-                    }
 
+                        foreach (var log in logList)
+                        {
+                            sw.WriteLine(log.Content);
+                        }
+
+                    }
+                    Model.LogTaskManager.LogTip($"{task.TaskName}日志已保存");
                 }
-                Model.LogTaskManager.LogTip($"{task.TaskName}日志已保存");
                 e.Handled = true;
             };
             m_Panel.CommandBindings.Add(saveLogsCommandBinding);

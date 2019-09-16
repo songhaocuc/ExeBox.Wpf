@@ -13,7 +13,6 @@
     Title="ExeBox WPF"
     Height="768"
     Width="1266"
-    Icon="/Resources/Icon/exebox_32.ico"
     WindowStartupLocation="CenterScreen"
     Background="{StaticResource visual_studio_background_brush_main}">
     <Window.Resources>

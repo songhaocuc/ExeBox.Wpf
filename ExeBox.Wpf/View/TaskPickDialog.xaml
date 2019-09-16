@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:local="clr-namespace:ExeBox.Wpf.View"
     mc:Ignorable="d"
-    Icon="/Resources/Icon/exebox_32.ico"
     Title="选择任务"
     Height="300"
     Width="650">

@@ -40,18 +40,25 @@ namespace ExeBox.Wpf.Controller
             m_TaskSelections = new List<View.TaskSelection>();
         }
 
-        public void Init(string filepath = DEFAULT_CONFIG_FILE)
+        public void Init()
         {
-
-
-
+            string filepath = DEFAULT_CONFIG_FILE;
             //如果当前目录没有ExecBox.xml,选择自定义配置文件
             while (!System.IO.File.Exists(filepath))
             {
                 Model.LogTaskManager.LogMessage($"找不到配置文件:[{filepath}]，重新选择文件");
-                filepath = SelectConfigFile();
+                //如果打开程序后初次选择文件->取消， 则退出程序
+                if(!SelectConfigFile(out filepath))
+                {
+                    Environment.Exit(0);
+                }
             }
 
+            DoInit(filepath);
+        }
+
+        private void DoInit(string filepath)
+        {
             manager.FileName = Path.GetFileNameWithoutExtension(filepath);
             if(!LoadConfigFile(filepath))
             {
@@ -135,9 +142,9 @@ namespace ExeBox.Wpf.Controller
             };
         }
 
-        private string SelectConfigFile()
+        private bool SelectConfigFile(out string filepath)
         {
-            var filepath = string.Empty;
+            filepath = string.Empty;
             OpenFileDialog fileDialog = new OpenFileDialog();
             fileDialog.Title = "请选择配置文件";
             fileDialog.InitialDirectory = Environment.CurrentDirectory;
@@ -149,11 +156,7 @@ namespace ExeBox.Wpf.Controller
                 filepath = fileDialog.FileName;
                 Environment.CurrentDirectory = Path.GetDirectoryName(filepath);
             }
-            else
-            {
-                Environment.Exit(0);
-            }
-            return filepath;
+            return result ?? false;
         }
 
         //从配置文件中加载配置
@@ -286,12 +289,33 @@ namespace ExeBox.Wpf.Controller
         {
             if (!m_Documents.ContainsKey(task)) return;
             var document = m_Documents[task];
-            if (!main.documentsRoot.Contains(document))
+            
+            foreach (LayoutDocumentPane pane in main.documentsRoot.Children)
             {
-                main.documentsRoot.Children.Add(document);
+                
+                if (pane.Children.Contains(document))
+                {
+                    foreach (var doc in pane.Children)
+                    {
+                        lock (doc)
+                        {
+                            doc.IsActive = (document == doc);
+                        }
+                    }
+                    return;
+                }
             }
-            // Extensions
-            main.documentsRoot.SetActiveDocument(document);
+            LayoutDocumentPane pane0 = null;
+            if (main.documentsRoot.Children.Count > 0)
+            {
+                pane0 = main.documentsRoot.Children[0] as LayoutDocumentPane;
+            }
+            if (pane0 == null)
+            {
+                pane0 = new LayoutDocumentPane();
+                main.documentsRoot.Children.Add(pane0);
+            }
+            pane0.Children.Add(document);
         }
 
         private void InitCommandHandler()
@@ -329,7 +353,16 @@ namespace ExeBox.Wpf.Controller
                 if (treeItem != null && treeItem.DataContext is Model.LogTask)
                 {
                     var task = treeItem.DataContext as Model.LogTask;
-                    e.CanExecute = main.documentsRoot.Contains(m_Documents[task]);
+                    bool canExe = false;
+                    foreach (LayoutDocumentPane pane in main.documentsRoot.Children)
+                    {
+
+                        if (pane.Children.Contains(m_Documents[task]))
+                        {
+                            canExe = true;
+                        }
+                    }
+                    e.CanExecute = canExe;
                     e.Handled = true;
                 }
             };
@@ -605,7 +638,11 @@ namespace ExeBox.Wpf.Controller
             {
                 main.Dispatcher.Invoke(() =>
                 {
-                    Init(SelectConfigFile());
+                    string filepath;
+                    if(SelectConfigFile(out filepath))
+                    {
+                        DoInit(filepath);
+                    }
                 });
 
                 e.Handled = true;
@@ -638,7 +675,19 @@ namespace ExeBox.Wpf.Controller
             var document = new LayoutDocument();
             document.Content = logPanel;
             document.Title = task.Config.Name;
-            main.documentsRoot.Children.Add(document);
+
+            //TODO: getDefaultPane
+            LayoutDocumentPane pane0 = null;
+            if (main.documentsRoot.Children.Count > 0)
+            {
+                pane0 = main.documentsRoot.Children[0] as LayoutDocumentPane;
+            }
+            if (pane0 == null)
+            {
+                pane0 = new LayoutDocumentPane();
+                main.documentsRoot.Children.Add(pane0);
+            }
+            pane0.Children.Add(document);
             m_Documents.Add(task, document);
         }
 
@@ -646,10 +695,17 @@ namespace ExeBox.Wpf.Controller
         {
             if (task == null) return;
             var document = m_Documents[task];
-            if (document != null && main.documentsRoot.Children.Contains(document))
+            if (document != null)
             {
-                main.documentsRoot.Children.Remove(document);
+                foreach (var pane in main.documentsRoot.Children)
+                {
+                    if (pane.Children.Contains(document))
+                    {
+                        pane.RemoveChild(document);
+                    }
+                }
             }
         }
+
     }
 }

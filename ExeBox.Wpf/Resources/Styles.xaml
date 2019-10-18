@@ -500,7 +500,9 @@
                                         Property="Background"
                                         TargetName="border"
                                         Value="{StaticResource visual_studio_background_brush_selected}" />
-                                    
+                                    <Setter
+                                        Property="Foreground"
+                                        Value="{StaticResource visual_studio_foreground_brush_selected}"/>
                                 </Trigger>
                                 
                             </ControlTemplate.Triggers>

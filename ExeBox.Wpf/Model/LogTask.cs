@@ -73,6 +73,24 @@ namespace ExeBox.Wpf.Model
             }
         }
 
+        #region ProcessId 属性
+        private string m_ProcessId;
+        public string ProcessId
+        {
+            get { return m_ProcessId; }
+            set
+            {
+                m_ProcessId = value;
+                if (PropertyChanged != null)
+                {
+                    PropertyChanged.Invoke(this, new PropertyChangedEventArgs("ProcessId"));
+                }
+            }
+        }
+        #endregion
+
+
+
         //该线程用于监测任务进程是否结束
         private Thread m_StatusObserver;
         //读取stdout
@@ -127,6 +145,7 @@ namespace ExeBox.Wpf.Model
             {
                 m_ExecProcess.WaitForExit();
                 Status = eLogTaskStatus.Terminated;
+                ProcessId = "------";
                 LogTaskManager.LogMessage($"任务[{this.Config.Name}]已退出");
                 //m_StatusObserver.Abort();
                 PreviousProcessExited?.Invoke();
@@ -183,6 +202,7 @@ namespace ExeBox.Wpf.Model
                 // 检测进程是否关闭
                 m_StatusObserver.Start();
                 Status = eLogTaskStatus.Running;
+                ProcessId = $"{m_ExecProcess.Id}";
                 LogTaskManager.LogMessage($"任务[{this.Config.Name}]已启动");
             }
             catch (Exception e)

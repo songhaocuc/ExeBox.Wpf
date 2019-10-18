@@ -97,10 +97,17 @@
             Grid.Row="2">
             <Button
                 x:Name="ensureButton"
-                Height="20"
-                Width="60"
-                Margin="10"
-                Style="{StaticResource click_button_style}">确认</Button>
+                BorderThickness="1"
+                BorderBrush="{StaticResource visual_studio_background_brush_selected}"
+                Height="30"
+                Width="70"
+                Margin="0,0,0,15"
+                Style="{StaticResource click_button_style}">
+                <TextBlock
+                    FontSize="15"
+                    FontWeight="Bold"
+                    IsHitTestVisible="False">确认</TextBlock>
+            </Button>
         </Grid>
     </Grid>
 </Window>

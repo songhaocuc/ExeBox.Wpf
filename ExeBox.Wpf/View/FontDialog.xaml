@@ -1,0 +1,137 @@
+﻿<Window
+    x:Class="ExeBox.Wpf.View.FontDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:ExeBox.Wpf.View"
+    mc:Ignorable="d"
+    Title="FontDialog"
+    Height="250"
+    Width="400"
+    Background="{StaticResource visual_studio_background_brush_main}">
+    <Grid
+        Margin="11">
+        <Grid.RowDefinitions>
+            <RowDefinition
+                Height="Auto" />
+            <RowDefinition
+                Height="*" />
+            <RowDefinition
+                Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition
+                    Width="*" />
+                <ColumnDefinition
+                    Width="Auto" />
+                <ColumnDefinition
+                    Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                Orientation="Vertical">
+                <TextBlock
+                    Text="字体"
+                    Margin="3" />
+                <ComboBox
+                    x:Name="fonts"
+                    Height="25"
+                    VerticalAlignment="Center"
+                    BorderThickness="0"
+                    Background="Blue">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                Text="{Binding Source}"
+                                FontFamily="{Binding Source}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel
+                Grid.Column="1"
+                Margin="5,0,0,0">
+                <TextBlock
+                    Text="大小"
+                    Margin="3" />
+                <StackPanel
+                    Orientation="Horizontal">
+
+                    <TextBlock
+                        Width="20"
+                        Text="{Binding Size}"
+                        Margin="1,5" />
+                    <Button
+                        x:Name="sizeDown"
+                        Width="13"
+                        Margin="1,5"
+                        Style="{StaticResource click_button_style}"
+                        Padding="0">
+                        <Image
+                            Source="{StaticResource font_image_down}" />
+                    </Button>
+                    <Button
+                        x:Name="sizeUp"
+                        Margin="1,5"
+                        Width="13"
+                        Style="{StaticResource click_button_style}"
+                        Padding="0">
+                        <Image
+                            Source="{StaticResource font_image_up}" />
+                    </Button>
+
+                </StackPanel>
+
+
+            </StackPanel>
+
+
+        </Grid>
+        <Grid
+            Margin="0,10"
+            Grid.Row="1"
+            Background="{StaticResource visual_studio_background_brush}">
+            <Grid.RowDefinitions>
+                <RowDefinition
+                    Height="Auto" />
+                <RowDefinition
+                    Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock
+                Text="预览"
+                Margin="5" />
+            <TextBlock
+                Grid.Row="1"
+                VerticalAlignment="Center"
+                TextAlignment="Center"
+                Text="Exebox WPF 字体测试"
+                FontFamily="{Binding FontChoice}"
+                FontSize="{Binding Size}" />
+        </Grid>
+        <StackPanel
+            Grid.Row="2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Orientation="Horizontal">
+            <Button
+                Name="ButtonOk"
+                MinWidth="75"
+                Click="OnOkClick"
+                Content="_OK"
+                IsDefault="True"
+                Style="{StaticResource click_button_style}" 
+                BorderBrush="{StaticResource visual_studio_background_brush_selected}"/>
+            <Button
+                Name="ButtonCancel"
+                MinWidth="75"
+                Click="OnCancelClick"
+                Content="_Cancel"
+                IsCancel="True"
+                Style="{StaticResource click_button_style}"
+                BorderBrush="{StaticResource visual_studio_background_brush_selected}" />
+        </StackPanel>
+    </Grid>
+</Window>
